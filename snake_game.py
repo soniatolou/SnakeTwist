@@ -246,13 +246,18 @@ class Goomba:
 class Obstacle:
     """ Obstacle class for moving obstacles in themed worlds """
     def __init__(self, obstacle_type, color):
-        self.type = obstacle_type  # "palm", "surfboard", or "kuromi"
+        self.type = obstacle_type  # "palm", "surfboard", "kuromi", or "rupee"
         self.color = color
         self.position = self.generate_position()
         self.direction = random.choice([Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT])
         self.move_counter = 0
-        # Kuromi moves faster than palm trees
-        self.move_delay = 2 if obstacle_type == "kuromi" else 3
+        # Kuromi moves faster than palm trees, rupees move at medium speed
+        if obstacle_type == "kuromi":
+            self.move_delay = 2
+        elif obstacle_type == "rupee":
+            self.move_delay = 4
+        else:
+            self.move_delay = 3
 
     def generate_position(self):
         """ Generate random position for obstacle """
@@ -343,6 +348,35 @@ class Obstacle:
             # Pink skull mark on forehead
             pygame.draw.circle(screen, pink, (x * GRID_SIZE + 10, y * GRID_SIZE + 4), 2)
 
+        elif self.type == "rupee":
+            # Draw rupee (diamond-shaped gem from Zelda)
+            center_x = x * GRID_SIZE + GRID_SIZE // 2
+            center_y = y * GRID_SIZE + GRID_SIZE // 2
+
+            # Diamond points
+            rupee_points = [
+                (center_x, center_y - 8),      # Top
+                (center_x + 6, center_y),      # Right
+                (center_x, center_y + 8),      # Bottom
+                (center_x - 6, center_y)       # Left
+            ]
+
+            # Draw filled rupee
+            pygame.draw.polygon(screen, self.color, rupee_points)
+
+            # Add highlight (lighter color on top-left)
+            highlight_color = tuple(min(255, c + 50) for c in self.color)
+            highlight_points = [
+                (center_x, center_y - 8),
+                (center_x - 3, center_y - 4),
+                (center_x, center_y)
+            ]
+            pygame.draw.polygon(screen, highlight_color, highlight_points)
+
+            # Draw outline
+            dark_color = tuple(max(0, c - 50) for c in self.color)
+            pygame.draw.polygon(screen, dark_color, rupee_points, 2)
+
 class Game:
     """ Main class for the game """
     def __init__(self):
@@ -385,6 +419,88 @@ class Game:
         text_surface = font.render(text, True, color)
         text_rect = text_surface.get_rect(center=pos)
         self.screen.blit(text_surface, text_rect)
+
+    def draw_triforce(self, x, y, size):
+        """ Draw a Triforce symbol for Zelda theme """
+        gold = (255, 215, 0)
+        dark_gold = (218, 165, 32)
+
+        # Top triangle
+        top_triangle = [
+            (x, y - size),
+            (x - size, y),
+            (x + size, y)
+        ]
+        # Bottom-left triangle
+        left_triangle = [
+            (x - size, y),
+            (x - 2*size, y + size),
+            (x, y + size)
+        ]
+        # Bottom-right triangle
+        right_triangle = [
+            (x + size, y),
+            (x, y + size),
+            (x + 2*size, y + size)
+        ]
+
+        pygame.draw.polygon(self.screen, gold, top_triangle)
+        pygame.draw.polygon(self.screen, gold, left_triangle)
+        pygame.draw.polygon(self.screen, gold, right_triangle)
+
+        # Draw outlines
+        pygame.draw.polygon(self.screen, dark_gold, top_triangle, 2)
+        pygame.draw.polygon(self.screen, dark_gold, left_triangle, 2)
+        pygame.draw.polygon(self.screen, dark_gold, right_triangle, 2)
+
+    def draw_hyrule_grass(self, grid_x, grid_y):
+        """ Draw grass patch for Zelda theme """
+        grass_green = (0, 128, 0)
+        dark_green = (0, 100, 0)
+
+        x = grid_x * GRID_SIZE
+        y = grid_y * GRID_SIZE
+
+        # Draw grass blades
+        for i in range(3):
+            offset_x = i * 6
+            blade_points = [
+                (x + offset_x, y + GRID_SIZE),
+                (x + offset_x + 2, y + GRID_SIZE - 8),
+                (x + offset_x + 4, y + GRID_SIZE)
+            ]
+            pygame.draw.polygon(self.screen, grass_green if i % 2 == 0 else dark_green, blade_points)
+
+    def draw_master_sword(self, grid_x, grid_y):
+        """ Draw Master Sword as food for Zelda theme """
+        x = grid_x * GRID_SIZE + GRID_SIZE // 2
+        y = grid_y * GRID_SIZE + GRID_SIZE // 2
+
+        # Blade (blue-silver)
+        blade_color = (192, 192, 220)
+        blade_rect = pygame.Rect(x - 2, y - 8, 4, 10)
+        pygame.draw.rect(self.screen, blade_color, blade_rect)
+
+        # Blade tip (triangle)
+        tip_points = [
+            (x, y - 10),
+            (x - 2, y - 8),
+            (x + 2, y - 8)
+        ]
+        pygame.draw.polygon(self.screen, blade_color, tip_points)
+
+        # Guard (gold)
+        guard_color = (255, 215, 0)
+        guard_rect = pygame.Rect(x - 5, y + 2, 10, 2)
+        pygame.draw.rect(self.screen, guard_color, guard_rect)
+
+        # Handle (blue)
+        handle_color = (30, 144, 255)
+        handle_rect = pygame.Rect(x - 1, y + 4, 2, 5)
+        pygame.draw.rect(self.screen, handle_color, handle_rect)
+
+        # Pommel (gold)
+        pygame.draw.circle(self.screen, guard_color, (x, y + 10), 2)
 
     def draw_menu(self):
         """ Draws the theme world-menu """
@@ -503,7 +619,21 @@ class Game:
             # Otherwise fill with solid color
             self.screen.fill(self.current_theme.bg_color)
 
-        # Draw obstacles (Stitch theme)
+        # Draw Zelda-themed background decorations
+        if self.current_theme.name == "Hyrule Kingdom":
+            # Draw Triforce symbols in corners
+            self.draw_triforce(50, 100, 15)
+            self.draw_triforce(WINDOW_WIDTH - 50, 100, 15)
+            self.draw_triforce(50, WINDOW_HEIGHT - 100, 15)
+            self.draw_triforce(WINDOW_WIDTH - 50, WINDOW_HEIGHT - 100, 15)
+
+            # Draw grass patches around the map
+            grass_positions = [(5, 10), (15, 8), (25, 12), (35, 9), (10, 25), (30, 22),
+                              (5, 20), (20, 5), (38, 15), (2, 28)]
+            for gx, gy in grass_positions:
+                self.draw_hyrule_grass(gx, gy)
+
+        # Draw obstacles
         for obstacle in self.obstacles:
             obstacle.draw(self.screen)
 
@@ -535,11 +665,15 @@ class Game:
                 color = tuple(int(c * factor) for c in self.current_theme.snake_color)
                 pygame.draw.rect(self.screen, color, rect, border_radius=3)
 
-        # Draw food (theme-specific rendering)
+        # Draw food (themed based on world)
         food_x, food_y = self.food.position
         food_rect = pygame.Rect(food_x * GRID_SIZE, food_y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
 
-        if self.current_theme.name == "Ohana Island":
+        if self.current_theme.name == "Hyrule Kingdom":
+            # Draw Master Sword for Zelda theme
+            self.draw_master_sword(food_x, food_y)
+
+        elif self.current_theme.name == "Ohana Island":
             # Draw Stitch (blue alien with big ears)
             stitch_blue = (65, 105, 225)
             dark_blue = (30, 60, 150)
@@ -746,6 +880,32 @@ class Game:
             if len(self.obstacles) > 1:
                 self.obstacles.pop(0)
 
+        elif self.current_theme and self.current_theme.name == "Hyrule Kingdom":
+            # Spawn rupees with different colors (green, blue, red, gold)
+            rupee_colors = [
+                (0, 255, 0),      # Green rupee
+                (0, 0, 255),      # Blue rupee
+                (255, 0, 0),      # Red rupee
+                (255, 215, 0)     # Gold rupee
+            ]
+            obstacle_type = "rupee"
+            rupee_color = random.choice(rupee_colors)
+            obstacle = Obstacle(obstacle_type, rupee_color)
+
+            # Make sure obstacle doesn't spawn on snake or food
+            attempts = 0
+            while attempts < 10:
+                if (obstacle.position not in self.snake.body and
+                    obstacle.position != self.food.position):
+                    self.obstacles.append(obstacle)
+                    break
+                obstacle.position = obstacle.generate_position()
+                attempts += 1
+
+            # Limit number of obstacles to 6 for Zelda world
+            if len(self.obstacles) > 6:
+                self.obstacles.pop(0)
+
     def check_obstacle_collision(self):
         """ Check if snake collides with any obstacle """
         head = self.snake.body[0]
@@ -814,7 +974,8 @@ class Game:
 
             # Spawn obstacles for themed worlds
             if self.current_theme and (self.current_theme.name == "Ohana Island" or
-                                       self.current_theme.name == "Kawaii Paradise"):
+                                       self.current_theme.name == "Kawaii Paradise" or
+                                       self.current_theme.name == "Hyrule Kingdom"):
                 self.obstacle_spawn_counter += 1
                 # Spawn rate depends on theme
                 spawn_rate = self.obstacle_spawn_rate
