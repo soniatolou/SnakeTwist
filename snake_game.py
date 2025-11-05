@@ -50,6 +50,43 @@ class MarioTheme(Theme):
             accent_color=(0, 168, 0)   # Green tubes
         )
         self.description = "It's-a me, Snake-io!"
+        self.background_image = None
+
+    def load_background(self, window_width, window_height):
+        """ Load and scale the background image """
+        try:
+            import os
+            from PIL import Image
+            # Get path relative to this script
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            bg_path = os.path.join(script_dir, "images", "supermario.png")
+            if os.path.exists(bg_path):
+                # Load image using PIL first, then convert to pygame surface
+                pil_image = Image.open(bg_path).convert('RGB')
+                # Resize using PIL
+                pil_image = pil_image.resize((window_width, window_height), Image.LANCZOS)
+                # Convert PIL image to pygame surface
+                mode = pil_image.mode
+                size = pil_image.size
+                data = pil_image.tobytes()
+                self.background_image = pygame.image.fromstring(data, size, mode)
+            else:
+                print(f"Background image not found at: {bg_path}")
+        except ImportError:
+            print("PIL/Pillow not installed. Trying direct pygame load...")
+            try:
+                import os
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                bg_path = os.path.join(script_dir, "images", "supermario.png")
+                if os.path.exists(bg_path):
+                    self.background_image = pygame.image.load(bg_path).convert()
+                    self.background_image = pygame.transform.scale(self.background_image, (window_width, window_height))
+            except Exception as e:
+                print(f"Could not load background image with pygame: {e}")
+                self.background_image = None
+        except Exception as e:
+            print(f"Could not load background image: {e}")
+            self.background_image = None
 
 class ZeldaTheme(Theme):
     def __init__(self):
@@ -795,19 +832,28 @@ class Game:
         # Background - fill game area only (below header)
         game_area_rect = pygame.Rect(0, HEADER_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT - HEADER_HEIGHT)
 
-        # Fill entire screen first with black, then game area with theme color
+        # Fill entire screen first with black
         self.screen.fill(BLACK)
-        pygame.draw.rect(self.screen, self.current_theme.bg_color, game_area_rect)
 
         # Draw themed background decorations
         if self.current_theme.name == "Super Mario World":
-            # Draw pixelated Mario mushrooms in corners (below header) - bigger size
-            self.draw_pixelated_mario_mushroom(15, HEADER_HEIGHT + 15, 50)
-            self.draw_pixelated_mario_mushroom(WINDOW_WIDTH - 65, HEADER_HEIGHT + 15, 50)
-            self.draw_pixelated_mario_mushroom(15, WINDOW_HEIGHT - 65, 50)
-            self.draw_pixelated_mario_mushroom(WINDOW_WIDTH - 65, WINDOW_HEIGHT - 65, 50)
+            # Check if background image is loaded
+            if hasattr(self.current_theme, 'background_image') and self.current_theme.background_image is not None:
+                # Draw Mario background image - blit the portion below the header
+                source_rect = pygame.Rect(0, HEADER_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT - HEADER_HEIGHT)
+                self.screen.blit(self.current_theme.background_image, (0, HEADER_HEIGHT), source_rect)
+            else:
+                # Fill game area with theme color if no image
+                pygame.draw.rect(self.screen, self.current_theme.bg_color, game_area_rect)
+                # Draw pixelated Mario mushrooms in corners (below header) - bigger size
+                self.draw_pixelated_mario_mushroom(15, HEADER_HEIGHT + 15, 50)
+                self.draw_pixelated_mario_mushroom(WINDOW_WIDTH - 65, HEADER_HEIGHT + 15, 50)
+                self.draw_pixelated_mario_mushroom(15, WINDOW_HEIGHT - 65, 50)
+                self.draw_pixelated_mario_mushroom(WINDOW_WIDTH - 65, WINDOW_HEIGHT - 65, 50)
 
         elif self.current_theme.name == "Ohana Island":
+            # Fill game area with theme color
+            pygame.draw.rect(self.screen, self.current_theme.bg_color, game_area_rect)
             # Draw Stitch images in corners (below header) if loaded
             if self.current_theme.background_image:
                 self.screen.blit(self.current_theme.background_image, (15, HEADER_HEIGHT + 15))
@@ -822,6 +868,8 @@ class Game:
                 self.draw_pixelated_stitch(WINDOW_WIDTH - 65, WINDOW_HEIGHT - 65, 50)
 
         elif self.current_theme.name == "Hyrule Kingdom":
+            # Fill game area with theme color
+            pygame.draw.rect(self.screen, self.current_theme.bg_color, game_area_rect)
             # Draw Triforce symbols in corners (below header)
             self.draw_triforce(50, HEADER_HEIGHT + 50, 15)
             self.draw_triforce(WINDOW_WIDTH - 50, HEADER_HEIGHT + 50, 15)
@@ -835,12 +883,18 @@ class Game:
                 self.draw_hyrule_grass(gx, gy)
 
         elif self.current_theme.name == "Kawaii Paradise":
+            # Fill game area with theme color
+            pygame.draw.rect(self.screen, self.current_theme.bg_color, game_area_rect)
             # Draw Hello Kitty image in corners (below header) if loaded
             if self.current_theme.background_image:
                 self.screen.blit(self.current_theme.background_image, (15, HEADER_HEIGHT + 15))
                 self.screen.blit(self.current_theme.background_image, (WINDOW_WIDTH - 115, HEADER_HEIGHT + 15))
                 self.screen.blit(self.current_theme.background_image, (15, WINDOW_HEIGHT - 115))
                 self.screen.blit(self.current_theme.background_image, (WINDOW_WIDTH - 115, WINDOW_HEIGHT - 115))
+
+        else:
+            # Default: fill game area with theme color (for Retro and any other themes)
+            pygame.draw.rect(self.screen, self.current_theme.bg_color, game_area_rect)
 
         # Draw obstacles
         for obstacle in self.obstacles:
