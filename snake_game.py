@@ -569,7 +569,6 @@ class Game:
         """ Draw a pixelated Stitch decoration """
         stitch_blue = (65, 105, 225)
         dark_blue = (30, 60, 150)
-        pink = (255, 182, 193)
         pixel_size = size // 6
 
         # Body pattern (pixelated)
@@ -589,10 +588,8 @@ class Game:
         pygame.draw.rect(self.screen, BLACK, (x + pixel_size * 4, y + pixel_size * 2, pixel_size, pixel_size))
         pygame.draw.rect(self.screen, stitch_blue, (x + pixel_size * 5, y + pixel_size * 2, pixel_size, pixel_size))
 
-        # Row 4 (nose area)
-        pygame.draw.rect(self.screen, stitch_blue, (x + pixel_size, y + pixel_size * 3, pixel_size * 2, pixel_size))
-        pygame.draw.rect(self.screen, pink, (x + pixel_size * 3, y + pixel_size * 3, pixel_size, pixel_size))
-        pygame.draw.rect(self.screen, stitch_blue, (x + pixel_size * 4, y + pixel_size * 3, pixel_size * 2, pixel_size))
+        # Row 4 (face area - no nose, more realistic)
+        pygame.draw.rect(self.screen, stitch_blue, (x + pixel_size, y + pixel_size * 3, pixel_size * 5, pixel_size))
 
         # Row 5 (body)
         pygame.draw.rect(self.screen, stitch_blue, (x + pixel_size, y + pixel_size * 4, pixel_size * 4, pixel_size))
@@ -722,18 +719,18 @@ class Game:
 
         # Draw themed background decorations
         if self.current_theme.name == "Super Mario World":
-            # Draw pixelated Mario mushrooms in corners (below header)
-            self.draw_pixelated_mario_mushroom(20, HEADER_HEIGHT + 20, 40)
-            self.draw_pixelated_mario_mushroom(WINDOW_WIDTH - 60, HEADER_HEIGHT + 20, 40)
-            self.draw_pixelated_mario_mushroom(20, WINDOW_HEIGHT - 60, 40)
-            self.draw_pixelated_mario_mushroom(WINDOW_WIDTH - 60, WINDOW_HEIGHT - 60, 40)
+            # Draw pixelated Mario mushrooms in corners (below header) - bigger size
+            self.draw_pixelated_mario_mushroom(15, HEADER_HEIGHT + 15, 50)
+            self.draw_pixelated_mario_mushroom(WINDOW_WIDTH - 65, HEADER_HEIGHT + 15, 50)
+            self.draw_pixelated_mario_mushroom(15, WINDOW_HEIGHT - 65, 50)
+            self.draw_pixelated_mario_mushroom(WINDOW_WIDTH - 65, WINDOW_HEIGHT - 65, 50)
 
         elif self.current_theme.name == "Ohana Island":
-            # Draw pixelated Stitch in corners (below header)
-            self.draw_pixelated_stitch(20, HEADER_HEIGHT + 20, 40)
-            self.draw_pixelated_stitch(WINDOW_WIDTH - 60, HEADER_HEIGHT + 20, 40)
-            self.draw_pixelated_stitch(20, WINDOW_HEIGHT - 60, 40)
-            self.draw_pixelated_stitch(WINDOW_WIDTH - 60, WINDOW_HEIGHT - 60, 40)
+            # Draw pixelated Stitch in corners (below header) - bigger size
+            self.draw_pixelated_stitch(15, HEADER_HEIGHT + 15, 50)
+            self.draw_pixelated_stitch(WINDOW_WIDTH - 65, HEADER_HEIGHT + 15, 50)
+            self.draw_pixelated_stitch(15, WINDOW_HEIGHT - 65, 50)
+            self.draw_pixelated_stitch(WINDOW_WIDTH - 65, WINDOW_HEIGHT - 65, 50)
 
         elif self.current_theme.name == "Hyrule Kingdom":
             # Draw Triforce symbols in corners (below header)
