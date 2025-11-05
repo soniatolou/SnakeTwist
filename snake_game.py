@@ -77,11 +77,24 @@ class HelloKittyTheme(Theme):
         super().__init__(
             name="Kawaii Paradise",
             bg_color=(255, 192, 203),  # Pink
-            snake_color=(255, 255, 255), # White
+            snake_color=(255, 105, 180), # Hot pink
             food_color=(255, 20, 147),  # Dark pink
             accent_color=(255, 105, 180) # Hot pink
         )
         self.description = "Kawaii desu ne~!"
+        self.background_image = None
+
+    def load_background(self, window_width, window_height):
+        """ Load and scale the background image """
+        try:
+            import os
+            bg_path = os.path.join(os.path.expanduser("~"), "Pictures", "Hackathon", "hellokittybackground.jpg")
+            if os.path.exists(bg_path):
+                self.background_image = pygame.image.load(bg_path)
+                self.background_image = pygame.transform.scale(self.background_image, (window_width, window_height))
+        except Exception as e:
+            print(f"Could not load background image: {e}")
+            self.background_image = None
 
 class RetroTheme(Theme):
     def __init__(self):
@@ -348,6 +361,11 @@ class Game:
             RetroTheme()
         ]
 
+        # Load background images for themes that have them
+        for theme in self.themes:
+            if hasattr(theme, 'load_background'):
+                theme.load_background(WINDOW_WIDTH, WINDOW_HEIGHT)
+
         self.current_theme = None
         self.snake = Snake()
         self.food = Food()
@@ -477,7 +495,13 @@ class Game:
     def draw_game(self):
         """ Draws the game """
         # Background
-        self.screen.fill(self.current_theme.bg_color)
+        if (hasattr(self.current_theme, 'background_image') and
+            self.current_theme.background_image is not None):
+            # Draw background image if available
+            self.screen.blit(self.current_theme.background_image, (0, 0))
+        else:
+            # Otherwise fill with solid color
+            self.screen.fill(self.current_theme.bg_color)
 
         # Draw obstacles (Stitch theme)
         for obstacle in self.obstacles:
@@ -577,6 +601,9 @@ class Game:
                 white = (255, 255, 255)
                 pink = (255, 105, 180)
                 yellow = (255, 215, 0)
+
+                # Black outline circle
+                pygame.draw.circle(self.screen, BLACK, food_rect.center, GRID_SIZE // 2, 2)
 
                 # Head (white circle)
                 pygame.draw.circle(self.screen, white, food_rect.center, GRID_SIZE // 2 - 1)
