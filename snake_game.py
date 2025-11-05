@@ -72,6 +72,21 @@ class StitchTheme(Theme):
             accent_color=(255, 140, 0)  # Tropical orange
         )
         self.description = "Ohana means family!"
+        self.background_image = None
+
+    def load_background(self, window_width, window_height):
+        """ Load and scale the background image - Stitch in corners """
+        try:
+            import os
+            # Get path relative to this script
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            bg_path = os.path.join(script_dir, "images", "stitch_pixel.png")
+            if os.path.exists(bg_path):
+                # Load image (already resized to 100x100)
+                self.background_image = pygame.image.load(bg_path).convert_alpha()
+        except Exception as e:
+            print(f"Could not load Stitch background image: {e}")
+            self.background_image = None
 
 class HelloKittyTheme(Theme):
     def __init__(self):
@@ -793,11 +808,18 @@ class Game:
             self.draw_pixelated_mario_mushroom(WINDOW_WIDTH - 65, WINDOW_HEIGHT - 65, 50)
 
         elif self.current_theme.name == "Ohana Island":
-            # Draw pixelated Stitch in corners (below header) - bigger size
-            self.draw_pixelated_stitch(15, HEADER_HEIGHT + 15, 50)
-            self.draw_pixelated_stitch(WINDOW_WIDTH - 65, HEADER_HEIGHT + 15, 50)
-            self.draw_pixelated_stitch(15, WINDOW_HEIGHT - 65, 50)
-            self.draw_pixelated_stitch(WINDOW_WIDTH - 65, WINDOW_HEIGHT - 65, 50)
+            # Draw Stitch images in corners (below header) if loaded
+            if self.current_theme.background_image:
+                self.screen.blit(self.current_theme.background_image, (15, HEADER_HEIGHT + 15))
+                self.screen.blit(self.current_theme.background_image, (WINDOW_WIDTH - 115, HEADER_HEIGHT + 15))
+                self.screen.blit(self.current_theme.background_image, (15, WINDOW_HEIGHT - 115))
+                self.screen.blit(self.current_theme.background_image, (WINDOW_WIDTH - 115, WINDOW_HEIGHT - 115))
+            else:
+                # Fallback to pixelated Stitch if images not loaded
+                self.draw_pixelated_stitch(15, HEADER_HEIGHT + 15, 50)
+                self.draw_pixelated_stitch(WINDOW_WIDTH - 65, HEADER_HEIGHT + 15, 50)
+                self.draw_pixelated_stitch(15, WINDOW_HEIGHT - 65, 50)
+                self.draw_pixelated_stitch(WINDOW_WIDTH - 65, WINDOW_HEIGHT - 65, 50)
 
         elif self.current_theme.name == "Hyrule Kingdom":
             # Draw Triforce symbols in corners (below header)
