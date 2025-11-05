@@ -86,13 +86,14 @@ class HelloKittyTheme(Theme):
         self.background_image = None
 
     def load_background(self, window_width, window_height):
-        """ Load and scale the background image """
+        """ Load and scale the background image - small corners with white background """
         try:
             import os
-            bg_path = os.path.join(os.path.expanduser("~"), "Pictures", "Hackathon", "hellokittybackground.jpg")
+            bg_path = os.path.join(os.path.expanduser("~"), "Desktop", "snake_game", "hello kitty", "hellokitty.png")
             if os.path.exists(bg_path):
-                self.background_image = pygame.image.load(bg_path)
-                self.background_image = pygame.transform.scale(self.background_image, (window_width, window_height))
+                # Load image and scale to small size (100x100) for corners
+                self.background_image = pygame.image.load(bg_path).convert()
+                self.background_image = pygame.transform.scale(self.background_image, (100, 100))
         except Exception as e:
             print(f"Could not load background image: {e}")
             self.background_image = None
@@ -631,6 +632,42 @@ class Game:
         # Row 6 (body bottom)
         pygame.draw.rect(self.screen, stitch_blue, (x + pixel_size * 2, y + pixel_size * 5, pixel_size * 2, pixel_size))
 
+    def draw_pixelated_hello_kitty(self, x, y, size=30):
+        """ Draw a pixelated Hello Kitty decoration """
+        white = (255, 255, 255)
+        pink = (255, 105, 180)
+        yellow = (255, 215, 0)
+        pixel_size = size // 6
+
+        # Hello Kitty pattern (pixelated)
+        # Row 1 (ears with bow)
+        pygame.draw.rect(self.screen, pink, (x, y, pixel_size, pixel_size))  # Left bow
+        pygame.draw.rect(self.screen, white, (x + pixel_size, y, pixel_size, pixel_size))  # Left ear
+        pygame.draw.rect(self.screen, white, (x + pixel_size * 4, y, pixel_size, pixel_size))  # Right ear
+        pygame.draw.rect(self.screen, white, (x + pixel_size * 5, y, pixel_size, pixel_size))  # Right ear edge
+
+        # Row 2 (head top)
+        pygame.draw.rect(self.screen, pink, (x, y + pixel_size, pixel_size, pixel_size))  # Left bow
+        pygame.draw.rect(self.screen, white, (x + pixel_size, y + pixel_size, pixel_size * 5, pixel_size))  # Head
+
+        # Row 3 (eyes)
+        pygame.draw.rect(self.screen, white, (x + pixel_size, y + pixel_size * 2, pixel_size, pixel_size))
+        pygame.draw.rect(self.screen, BLACK, (x + pixel_size * 2, y + pixel_size * 2, pixel_size, pixel_size))  # Left eye
+        pygame.draw.rect(self.screen, white, (x + pixel_size * 3, y + pixel_size * 2, pixel_size, pixel_size))
+        pygame.draw.rect(self.screen, BLACK, (x + pixel_size * 4, y + pixel_size * 2, pixel_size, pixel_size))  # Right eye
+        pygame.draw.rect(self.screen, white, (x + pixel_size * 5, y + pixel_size * 2, pixel_size, pixel_size))
+
+        # Row 4 (nose)
+        pygame.draw.rect(self.screen, white, (x + pixel_size, y + pixel_size * 3, pixel_size * 2, pixel_size))
+        pygame.draw.rect(self.screen, yellow, (x + pixel_size * 3, y + pixel_size * 3, pixel_size, pixel_size))  # Nose
+        pygame.draw.rect(self.screen, white, (x + pixel_size * 4, y + pixel_size * 3, pixel_size * 2, pixel_size))
+
+        # Row 5 (whiskers area)
+        pygame.draw.rect(self.screen, white, (x + pixel_size, y + pixel_size * 4, pixel_size * 5, pixel_size))
+
+        # Row 6 (bottom)
+        pygame.draw.rect(self.screen, white, (x + pixel_size * 2, y + pixel_size * 5, pixel_size * 3, pixel_size))
+
     def draw_menu(self):
         """ Draws the theme world-menu """
         self.screen.fill((30, 30, 50))
@@ -740,16 +777,10 @@ class Game:
         """ Draws the game """
         # Background - fill game area only (below header)
         game_area_rect = pygame.Rect(0, HEADER_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT - HEADER_HEIGHT)
-        if (hasattr(self.current_theme, 'background_image') and
-            self.current_theme.background_image is not None):
-            # Draw background image if available - crop to game area
-            self.screen.fill(BLACK)  # Fill entire screen first
-            self.screen.blit(self.current_theme.background_image, (0, HEADER_HEIGHT),
-                           (0, HEADER_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT - HEADER_HEIGHT))
-        else:
-            # Fill entire screen first with black, then game area with theme color
-            self.screen.fill(BLACK)
-            pygame.draw.rect(self.screen, self.current_theme.bg_color, game_area_rect)
+
+        # Fill entire screen first with black, then game area with theme color
+        self.screen.fill(BLACK)
+        pygame.draw.rect(self.screen, self.current_theme.bg_color, game_area_rect)
 
         # Draw themed background decorations
         if self.current_theme.name == "Super Mario World":
@@ -778,6 +809,14 @@ class Game:
                               (5, 20), (20, 5), (38, 15), (2, 28)]
             for gx, gy in grass_positions:
                 self.draw_hyrule_grass(gx, gy)
+
+        elif self.current_theme.name == "Kawaii Paradise":
+            # Draw Hello Kitty image in corners (below header) if loaded
+            if self.current_theme.background_image:
+                self.screen.blit(self.current_theme.background_image, (15, HEADER_HEIGHT + 15))
+                self.screen.blit(self.current_theme.background_image, (WINDOW_WIDTH - 115, HEADER_HEIGHT + 15))
+                self.screen.blit(self.current_theme.background_image, (15, WINDOW_HEIGHT - 115))
+                self.screen.blit(self.current_theme.background_image, (WINDOW_WIDTH - 115, WINDOW_HEIGHT - 115))
 
         # Draw obstacles
         for obstacle in self.obstacles:
