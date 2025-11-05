@@ -89,7 +89,9 @@ class HelloKittyTheme(Theme):
         """ Load and scale the background image - small corners with white background """
         try:
             import os
-            bg_path = os.path.join(os.path.expanduser("~"), "Desktop", "snake_game", "hello kitty", "hellokitty.png")
+            # Get path relative to this script
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            bg_path = os.path.join(script_dir, "images", "hellokitty.png")
             if os.path.exists(bg_path):
                 # Load image and scale to small size (100x100) for corners
                 self.background_image = pygame.image.load(bg_path).convert()
