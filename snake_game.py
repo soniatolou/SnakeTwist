@@ -13,9 +13,10 @@ pygame.init()
 # Constants
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
+HEADER_HEIGHT = 50
 GRID_SIZE = 20
 GRID_WIDTH = WINDOW_WIDTH // GRID_SIZE
-GRID_HEIGHT = WINDOW_HEIGHT // GRID_SIZE
+GRID_HEIGHT = (WINDOW_HEIGHT - HEADER_HEIGHT) // GRID_SIZE
 FPS = 10
 
 # Colors
@@ -287,7 +288,9 @@ class Obstacle:
     def draw(self, screen):
         """ Draw the obstacle """
         x, y = self.position
-        rect = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+        screen_x = x * GRID_SIZE
+        screen_y = y * GRID_SIZE + HEADER_HEIGHT
+        rect = pygame.Rect(screen_x, screen_y, GRID_SIZE, GRID_SIZE)
 
         if self.type == "palm":
             # Draw palm tree (brown trunk + green top)
@@ -295,12 +298,12 @@ class Obstacle:
             leaf_color = (34, 139, 34)
 
             # Trunk
-            trunk_rect = pygame.Rect(x * GRID_SIZE + 7, y * GRID_SIZE + 8, 6, 12)
+            trunk_rect = pygame.Rect(screen_x + 7, screen_y + 8, 6, 12)
             pygame.draw.rect(screen, trunk_color, trunk_rect)
 
             # Leaves (circle on top)
             pygame.draw.circle(screen, leaf_color,
-                             (x * GRID_SIZE + 10, y * GRID_SIZE + 6), 8)
+                             (screen_x + 10, screen_y + 6), 8)
 
         elif self.type == "surfboard":
             # Draw surfboard (elongated oval)
@@ -310,7 +313,7 @@ class Obstacle:
             # Main board
             pygame.draw.ellipse(screen, board_color, rect)
             # Stripe
-            stripe_rect = pygame.Rect(x * GRID_SIZE + 2, y * GRID_SIZE + GRID_SIZE//2 - 1,
+            stripe_rect = pygame.Rect(screen_x + 2, screen_y + GRID_SIZE//2 - 1,
                                      GRID_SIZE - 4, 2)
             pygame.draw.rect(screen, stripe_color, stripe_rect)
 
@@ -324,8 +327,8 @@ class Obstacle:
             pygame.draw.circle(screen, kuromi_black, rect.center, GRID_SIZE // 2 - 1)
 
             # Eyes (white with black pupils)
-            eye_left = (x * GRID_SIZE + 6, y * GRID_SIZE + 8)
-            eye_right = (x * GRID_SIZE + 14, y * GRID_SIZE + 8)
+            eye_left = (screen_x + 6, screen_y + 8)
+            eye_right = (screen_x + 14, screen_y + 8)
             pygame.draw.circle(screen, (255, 255, 255), eye_left, 2)
             pygame.draw.circle(screen, (255, 255, 255), eye_right, 2)
             pygame.draw.circle(screen, BLACK, eye_left, 1)
@@ -333,25 +336,25 @@ class Obstacle:
 
             # Devil ears (purple triangles)
             ear_left_points = [
-                (x * GRID_SIZE + 3, y * GRID_SIZE + 2),
-                (x * GRID_SIZE, y * GRID_SIZE - 3),
-                (x * GRID_SIZE + 6, y * GRID_SIZE + 2)
+                (screen_x + 3, screen_y + 2),
+                (screen_x, screen_y - 3),
+                (screen_x + 6, screen_y + 2)
             ]
             ear_right_points = [
-                (x * GRID_SIZE + 14, y * GRID_SIZE + 2),
-                (x * GRID_SIZE + 20, y * GRID_SIZE - 3),
-                (x * GRID_SIZE + 17, y * GRID_SIZE + 2)
+                (screen_x + 14, screen_y + 2),
+                (screen_x + 20, screen_y - 3),
+                (screen_x + 17, screen_y + 2)
             ]
             pygame.draw.polygon(screen, kuromi_purple, ear_left_points)
             pygame.draw.polygon(screen, kuromi_purple, ear_right_points)
 
             # Pink skull mark on forehead
-            pygame.draw.circle(screen, pink, (x * GRID_SIZE + 10, y * GRID_SIZE + 4), 2)
+            pygame.draw.circle(screen, pink, (screen_x + 10, screen_y + 4), 2)
 
         elif self.type == "rupee":
             # Draw rupee (diamond-shaped gem from Zelda)
-            center_x = x * GRID_SIZE + GRID_SIZE // 2
-            center_y = y * GRID_SIZE + GRID_SIZE // 2
+            center_x = screen_x + GRID_SIZE // 2
+            center_y = screen_y + GRID_SIZE // 2
 
             # Diamond points
             rupee_points = [
@@ -407,10 +410,15 @@ class Game:
         self.food_collected = 0
         self.goombas = []
         self.game_state = "menu"  # menu, playing, game_over
+        self.paused = False
         self.obstacles = []
         self.obstacle_spawn_counter = 0
         self.obstacle_spawn_rate = 50  # Spawn obstacle every 50 frames (approx 5 seconds)
 
+
+    def grid_to_screen(self, grid_x, grid_y):
+        """ Convert grid coordinates to screen coordinates (accounting for header) """
+        return (grid_x * GRID_SIZE, grid_y * GRID_SIZE + HEADER_HEIGHT)
 
     def draw_text(self, text, pos, font=None, color=WHITE):
         """ Draws text on the screen """
@@ -419,6 +427,27 @@ class Game:
         text_surface = font.render(text, True, color)
         text_rect = text_surface.get_rect(center=pos)
         self.screen.blit(text_surface, text_rect)
+
+    def draw_header(self):
+        """ Draw header bar with score and theme name """
+        # Draw header background
+        header_rect = pygame.Rect(0, 0, WINDOW_WIDTH, HEADER_HEIGHT)
+        pygame.draw.rect(self.screen, BLACK, header_rect)
+        pygame.draw.line(self.screen, self.current_theme.accent_color,
+                        (0, HEADER_HEIGHT), (WINDOW_WIDTH, HEADER_HEIGHT), 3)
+
+        # Draw score on the left
+        score_text = self.small_font.render(f"Score: {self.score}", True, self.current_theme.accent_color)
+        self.screen.blit(score_text, (20, 15))
+
+        # Draw theme name in the center
+        theme_text = self.small_font.render(self.current_theme.name, True, self.current_theme.accent_color)
+        theme_rect = theme_text.get_rect(center=(WINDOW_WIDTH // 2, HEADER_HEIGHT // 2))
+        self.screen.blit(theme_text, theme_rect)
+
+        # Draw pause hint on the right
+        pause_text = self.small_font.render("Press P to pause", True, WHITE)
+        self.screen.blit(pause_text, (WINDOW_WIDTH - pause_text.get_width() - 20, 15))
 
     def draw_triforce(self, x, y, size):
         """ Draw a Triforce symbol for Zelda theme """
@@ -458,8 +487,7 @@ class Game:
         grass_green = (0, 128, 0)
         dark_green = (0, 100, 0)
 
-        x = grid_x * GRID_SIZE
-        y = grid_y * GRID_SIZE
+        x, y = self.grid_to_screen(grid_x, grid_y)
 
         # Draw grass blades
         for i in range(3):
@@ -473,8 +501,9 @@ class Game:
 
     def draw_master_sword(self, grid_x, grid_y):
         """ Draw Master Sword as food for Zelda theme """
-        x = grid_x * GRID_SIZE + GRID_SIZE // 2
-        y = grid_y * GRID_SIZE + GRID_SIZE // 2
+        screen_x, screen_y = self.grid_to_screen(grid_x, grid_y)
+        x = screen_x + GRID_SIZE // 2
+        y = screen_y + GRID_SIZE // 2
 
         # Blade (blue-silver)
         blade_color = (192, 192, 220)
@@ -501,6 +530,75 @@ class Game:
 
         # Pommel (gold)
         pygame.draw.circle(self.screen, guard_color, (x, y + 10), 2)
+
+    def draw_pixelated_mario_mushroom(self, x, y, size=30):
+        """ Draw a pixelated Mario mushroom decoration """
+        mushroom_red = (255, 0, 0)
+        mushroom_white = (255, 255, 255)
+        mushroom_beige = (245, 222, 179)
+        pixel_size = size // 6
+
+        # Mushroom cap pattern (pixelated)
+        # Row 1 (top)
+        pygame.draw.rect(self.screen, mushroom_red, (x + pixel_size * 2, y, pixel_size * 2, pixel_size))
+
+        # Row 2
+        pygame.draw.rect(self.screen, mushroom_red, (x + pixel_size, y + pixel_size, pixel_size, pixel_size))
+        pygame.draw.rect(self.screen, mushroom_white, (x + pixel_size * 2, y + pixel_size, pixel_size, pixel_size))
+        pygame.draw.rect(self.screen, mushroom_red, (x + pixel_size * 3, y + pixel_size, pixel_size * 2, pixel_size))
+
+        # Row 3
+        pygame.draw.rect(self.screen, mushroom_red, (x, y + pixel_size * 2, pixel_size, pixel_size))
+        pygame.draw.rect(self.screen, mushroom_white, (x + pixel_size, y + pixel_size * 2, pixel_size, pixel_size))
+        pygame.draw.rect(self.screen, mushroom_red, (x + pixel_size * 2, y + pixel_size * 2, pixel_size, pixel_size))
+        pygame.draw.rect(self.screen, mushroom_white, (x + pixel_size * 3, y + pixel_size * 2, pixel_size, pixel_size))
+        pygame.draw.rect(self.screen, mushroom_red, (x + pixel_size * 4, y + pixel_size * 2, pixel_size * 2, pixel_size))
+
+        # Row 4 (stem starts)
+        pygame.draw.rect(self.screen, mushroom_red, (x, y + pixel_size * 3, pixel_size, pixel_size))
+        pygame.draw.rect(self.screen, mushroom_beige, (x + pixel_size, y + pixel_size * 3, pixel_size * 4, pixel_size))
+        pygame.draw.rect(self.screen, mushroom_red, (x + pixel_size * 5, y + pixel_size * 3, pixel_size, pixel_size))
+
+        # Row 5 (stem)
+        pygame.draw.rect(self.screen, mushroom_beige, (x + pixel_size * 2, y + pixel_size * 4, pixel_size * 2, pixel_size))
+
+        # Row 6 (stem bottom)
+        pygame.draw.rect(self.screen, mushroom_beige, (x + pixel_size * 2, y + pixel_size * 5, pixel_size * 2, pixel_size))
+
+    def draw_pixelated_stitch(self, x, y, size=30):
+        """ Draw a pixelated Stitch decoration """
+        stitch_blue = (65, 105, 225)
+        dark_blue = (30, 60, 150)
+        pink = (255, 182, 193)
+        pixel_size = size // 6
+
+        # Body pattern (pixelated)
+        # Row 1 (ears)
+        pygame.draw.rect(self.screen, dark_blue, (x, y, pixel_size, pixel_size))
+        pygame.draw.rect(self.screen, dark_blue, (x + pixel_size * 5, y, pixel_size, pixel_size))
+
+        # Row 2 (head top)
+        pygame.draw.rect(self.screen, dark_blue, (x, y + pixel_size, pixel_size, pixel_size))
+        pygame.draw.rect(self.screen, stitch_blue, (x + pixel_size, y + pixel_size, pixel_size * 4, pixel_size))
+        pygame.draw.rect(self.screen, dark_blue, (x + pixel_size * 5, y + pixel_size, pixel_size, pixel_size))
+
+        # Row 3 (eyes)
+        pygame.draw.rect(self.screen, stitch_blue, (x + pixel_size, y + pixel_size * 2, pixel_size, pixel_size))
+        pygame.draw.rect(self.screen, BLACK, (x + pixel_size * 2, y + pixel_size * 2, pixel_size, pixel_size))
+        pygame.draw.rect(self.screen, stitch_blue, (x + pixel_size * 3, y + pixel_size * 2, pixel_size, pixel_size))
+        pygame.draw.rect(self.screen, BLACK, (x + pixel_size * 4, y + pixel_size * 2, pixel_size, pixel_size))
+        pygame.draw.rect(self.screen, stitch_blue, (x + pixel_size * 5, y + pixel_size * 2, pixel_size, pixel_size))
+
+        # Row 4 (nose area)
+        pygame.draw.rect(self.screen, stitch_blue, (x + pixel_size, y + pixel_size * 3, pixel_size * 2, pixel_size))
+        pygame.draw.rect(self.screen, pink, (x + pixel_size * 3, y + pixel_size * 3, pixel_size, pixel_size))
+        pygame.draw.rect(self.screen, stitch_blue, (x + pixel_size * 4, y + pixel_size * 3, pixel_size * 2, pixel_size))
+
+        # Row 5 (body)
+        pygame.draw.rect(self.screen, stitch_blue, (x + pixel_size, y + pixel_size * 4, pixel_size * 4, pixel_size))
+
+        # Row 6 (body bottom)
+        pygame.draw.rect(self.screen, stitch_blue, (x + pixel_size * 2, y + pixel_size * 5, pixel_size * 2, pixel_size))
 
     def draw_menu(self):
         """ Draws the theme world-menu """
@@ -538,8 +636,9 @@ class Game:
     def draw_coin(self, position, color):
         """Rita ett mynt"""
         x, y = position
-        center_x = x * GRID_SIZE + GRID_SIZE // 2
-        center_y = y * GRID_SIZE + GRID_SIZE // 2
+        screen_x, screen_y = self.grid_to_screen(x, y)
+        center_x = screen_x + GRID_SIZE // 2
+        center_y = screen_y + GRID_SIZE // 2
 
         # Guldmynt med cirkel
         pygame.draw.circle(self.screen, color, (center_x, center_y), GRID_SIZE // 2 - 2)
@@ -550,8 +649,7 @@ class Game:
     def draw_mushroom(self, position, color):
         """Rita en svamp (mushroom)"""
         x, y = position
-        base_x = x * GRID_SIZE
-        base_y = y * GRID_SIZE
+        base_x, base_y = self.grid_to_screen(x, y)
 
         # Svamphatt (röd med vita prickar för Mario-tema)
         mushroom_red = (255, 0, 0) if self.current_theme.name == "Super Mario World" else color
@@ -574,8 +672,7 @@ class Game:
     def draw_goomba(self, goomba):
         """Rita en Goomba"""
         x, y = goomba.position
-        base_x = x * GRID_SIZE
-        base_y = y * GRID_SIZE
+        base_x, base_y = self.grid_to_screen(x, y)
 
         # Goomba kropp (brun svamp-form)
         goomba_brown = (139, 69, 19)
@@ -610,22 +707,40 @@ class Game:
 
     def draw_game(self):
         """ Draws the game """
-        # Background
+        # Background - fill game area only (below header)
+        game_area_rect = pygame.Rect(0, HEADER_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT - HEADER_HEIGHT)
         if (hasattr(self.current_theme, 'background_image') and
             self.current_theme.background_image is not None):
-            # Draw background image if available
-            self.screen.blit(self.current_theme.background_image, (0, 0))
+            # Draw background image if available - crop to game area
+            self.screen.fill(BLACK)  # Fill entire screen first
+            self.screen.blit(self.current_theme.background_image, (0, HEADER_HEIGHT),
+                           (0, HEADER_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT - HEADER_HEIGHT))
         else:
-            # Otherwise fill with solid color
-            self.screen.fill(self.current_theme.bg_color)
+            # Fill entire screen first with black, then game area with theme color
+            self.screen.fill(BLACK)
+            pygame.draw.rect(self.screen, self.current_theme.bg_color, game_area_rect)
 
-        # Draw Zelda-themed background decorations
-        if self.current_theme.name == "Hyrule Kingdom":
-            # Draw Triforce symbols in corners
-            self.draw_triforce(50, 100, 15)
-            self.draw_triforce(WINDOW_WIDTH - 50, 100, 15)
-            self.draw_triforce(50, WINDOW_HEIGHT - 100, 15)
-            self.draw_triforce(WINDOW_WIDTH - 50, WINDOW_HEIGHT - 100, 15)
+        # Draw themed background decorations
+        if self.current_theme.name == "Super Mario World":
+            # Draw pixelated Mario mushrooms in corners (below header)
+            self.draw_pixelated_mario_mushroom(20, HEADER_HEIGHT + 20, 40)
+            self.draw_pixelated_mario_mushroom(WINDOW_WIDTH - 60, HEADER_HEIGHT + 20, 40)
+            self.draw_pixelated_mario_mushroom(20, WINDOW_HEIGHT - 60, 40)
+            self.draw_pixelated_mario_mushroom(WINDOW_WIDTH - 60, WINDOW_HEIGHT - 60, 40)
+
+        elif self.current_theme.name == "Ohana Island":
+            # Draw pixelated Stitch in corners (below header)
+            self.draw_pixelated_stitch(20, HEADER_HEIGHT + 20, 40)
+            self.draw_pixelated_stitch(WINDOW_WIDTH - 60, HEADER_HEIGHT + 20, 40)
+            self.draw_pixelated_stitch(20, WINDOW_HEIGHT - 60, 40)
+            self.draw_pixelated_stitch(WINDOW_WIDTH - 60, WINDOW_HEIGHT - 60, 40)
+
+        elif self.current_theme.name == "Hyrule Kingdom":
+            # Draw Triforce symbols in corners (below header)
+            self.draw_triforce(50, HEADER_HEIGHT + 50, 15)
+            self.draw_triforce(WINDOW_WIDTH - 50, HEADER_HEIGHT + 50, 15)
+            self.draw_triforce(50, WINDOW_HEIGHT - 50, 15)
+            self.draw_triforce(WINDOW_WIDTH - 50, WINDOW_HEIGHT - 50, 15)
 
             # Draw grass patches around the map
             grass_positions = [(5, 10), (15, 8), (25, 12), (35, 9), (10, 25), (30, 22),
@@ -649,7 +764,8 @@ class Game:
 
         # Draw snake with gradient effect
         for i, (x, y) in enumerate(self.snake.body):
-            rect = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE - 2, GRID_SIZE - 2)
+            screen_x, screen_y = self.grid_to_screen(x, y)
+            rect = pygame.Rect(screen_x, screen_y, GRID_SIZE - 2, GRID_SIZE - 2)
 
             # Head i lighter
             if i == 0:
@@ -657,8 +773,8 @@ class Game:
                 pygame.draw.rect(self.screen, color, rect, border_radius=5)
                 # Draw eyes
                 eye_color = BLACK if self.current_theme.name != "Kawaii Paradise" else self.current_theme.food_color
-                pygame.draw.circle(self.screen, eye_color, (x * GRID_SIZE + 5, y * GRID_SIZE + 5), 2)
-                pygame.draw.circle(self.screen, eye_color, (x * GRID_SIZE + GRID_SIZE - 7, y * GRID_SIZE + 5), 2)
+                pygame.draw.circle(self.screen, eye_color, (screen_x + 5, screen_y + 5), 2)
+                pygame.draw.circle(self.screen, eye_color, (screen_x + GRID_SIZE - 7, screen_y + 5), 2)
             else:
                 # The body gets darker further back
                 factor = max(0.5, 1 - (i * 0.02))
@@ -667,7 +783,8 @@ class Game:
 
         # Draw food (themed based on world)
         food_x, food_y = self.food.position
-        food_rect = pygame.Rect(food_x * GRID_SIZE, food_y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+        food_screen_x, food_screen_y = self.grid_to_screen(food_x, food_y)
+        food_rect = pygame.Rect(food_screen_x, food_screen_y, GRID_SIZE, GRID_SIZE)
 
         if self.current_theme.name == "Hyrule Kingdom":
             # Draw Master Sword for Zelda theme
@@ -682,28 +799,28 @@ class Game:
             pygame.draw.circle(self.screen, stitch_blue, food_rect.center, GRID_SIZE // 2 - 1)
 
             # Big black eyes
-            eye_left = (food_x * GRID_SIZE + 5, food_y * GRID_SIZE + 8)
-            eye_right = (food_x * GRID_SIZE + 15, food_y * GRID_SIZE + 8)
+            eye_left = (food_screen_x + 5, food_screen_y + 8)
+            eye_right = (food_screen_x + 15, food_screen_y + 8)
             pygame.draw.circle(self.screen, BLACK, eye_left, 3)
             pygame.draw.circle(self.screen, BLACK, eye_right, 3)
 
             # Ears (dark blue triangles on top)
             ear_left_points = [
-                (food_x * GRID_SIZE + 3, food_y * GRID_SIZE + 2),
-                (food_x * GRID_SIZE, food_y * GRID_SIZE - 3),
-                (food_x * GRID_SIZE + 6, food_y * GRID_SIZE + 2)
+                (food_screen_x + 3, food_screen_y + 2),
+                (food_screen_x, food_screen_y - 3),
+                (food_screen_x + 6, food_screen_y + 2)
             ]
             ear_right_points = [
-                (food_x * GRID_SIZE + 14, food_y * GRID_SIZE + 2),
-                (food_x * GRID_SIZE + 20, food_y * GRID_SIZE - 3),
-                (food_x * GRID_SIZE + 17, food_y * GRID_SIZE + 2)
+                (food_screen_x + 14, food_screen_y + 2),
+                (food_screen_x + 20, food_screen_y - 3),
+                (food_screen_x + 17, food_screen_y + 2)
             ]
             pygame.draw.polygon(self.screen, dark_blue, ear_left_points)
             pygame.draw.polygon(self.screen, dark_blue, ear_right_points)
 
             # Nose (small pink)
             pygame.draw.circle(self.screen, self.current_theme.food_color,
-                             (food_x * GRID_SIZE + 10, food_y * GRID_SIZE + 12), 2)
+                             (food_screen_x + 10, food_screen_y + 12), 2)
 
         elif self.current_theme.name == "Kawaii Paradise":
             if self.food.type == "bow":
@@ -716,17 +833,17 @@ class Game:
 
                 # Bow left side
                 left_bow = [
-                    (food_x * GRID_SIZE + 4, food_y * GRID_SIZE + 10),
-                    (food_x * GRID_SIZE + 2, food_y * GRID_SIZE + 6),
-                    (food_x * GRID_SIZE + 8, food_y * GRID_SIZE + 10)
+                    (food_screen_x + 4, food_screen_y + 10),
+                    (food_screen_x + 2, food_screen_y + 6),
+                    (food_screen_x + 8, food_screen_y + 10)
                 ]
                 pygame.draw.polygon(self.screen, pink, left_bow)
 
                 # Bow right side
                 right_bow = [
-                    (food_x * GRID_SIZE + 12, food_y * GRID_SIZE + 10),
-                    (food_x * GRID_SIZE + 18, food_y * GRID_SIZE + 6),
-                    (food_x * GRID_SIZE + 16, food_y * GRID_SIZE + 10)
+                    (food_screen_x + 12, food_screen_y + 10),
+                    (food_screen_x + 18, food_screen_y + 6),
+                    (food_screen_x + 16, food_screen_y + 10)
                 ]
                 pygame.draw.polygon(self.screen, pink, right_bow)
 
@@ -743,31 +860,31 @@ class Game:
                 pygame.draw.circle(self.screen, white, food_rect.center, GRID_SIZE // 2 - 1)
 
                 # Black eyes
-                eye_left = (food_x * GRID_SIZE + 6, food_y * GRID_SIZE + 9)
-                eye_right = (food_x * GRID_SIZE + 14, food_y * GRID_SIZE + 9)
+                eye_left = (food_screen_x + 6, food_screen_y + 9)
+                eye_right = (food_screen_x + 14, food_screen_y + 9)
                 pygame.draw.circle(self.screen, BLACK, eye_left, 2)
                 pygame.draw.circle(self.screen, BLACK, eye_right, 2)
 
                 # Yellow nose
                 pygame.draw.circle(self.screen, yellow,
-                                 (food_x * GRID_SIZE + 10, food_y * GRID_SIZE + 12), 2)
+                                 (food_screen_x + 10, food_screen_y + 12), 2)
 
                 # Ears (white triangles on top)
                 ear_left_points = [
-                    (food_x * GRID_SIZE + 3, food_y * GRID_SIZE + 4),
-                    (food_x * GRID_SIZE + 1, food_y * GRID_SIZE),
-                    (food_x * GRID_SIZE + 6, food_y * GRID_SIZE + 4)
+                    (food_screen_x + 3, food_screen_y + 4),
+                    (food_screen_x + 1, food_screen_y),
+                    (food_screen_x + 6, food_screen_y + 4)
                 ]
                 ear_right_points = [
-                    (food_x * GRID_SIZE + 14, food_y * GRID_SIZE + 4),
-                    (food_x * GRID_SIZE + 19, food_y * GRID_SIZE),
-                    (food_x * GRID_SIZE + 17, food_y * GRID_SIZE + 4)
+                    (food_screen_x + 14, food_screen_y + 4),
+                    (food_screen_x + 19, food_screen_y),
+                    (food_screen_x + 17, food_screen_y + 4)
                 ]
                 pygame.draw.polygon(self.screen, white, ear_left_points)
                 pygame.draw.polygon(self.screen, white, ear_right_points)
 
                 # Pink bow on left ear
-                bow_center = (food_x * GRID_SIZE + 3, food_y * GRID_SIZE + 2)
+                bow_center = (food_screen_x + 3, food_screen_y + 2)
                 pygame.draw.circle(self.screen, pink, bow_center, 3)
 
         else:
@@ -777,20 +894,29 @@ class Game:
             else:  # mushroom
                 self.draw_mushroom(self.food.position, self.current_theme.food_color)
 
-        # Draw score
-        score_text = self.small_font.render(f"Score: {self.score}", True, self.current_theme.accent_color)
-        score_bg = pygame.Rect(10, 10, score_text.get_width() + 20, score_text.get_height() + 10)
-        pygame.draw.rect(self.screen, BLACK, score_bg, border_radius=5)
-        pygame.draw.rect(self.screen, self.current_theme.accent_color, score_bg, 2, border_radius=5)
-        self.screen.blit(score_text, (20, 15))
+        # Draw header with score and theme name
+        self.draw_header()
 
-        # Draw theme names
-        theme_text = self.small_font.render(self.current_theme.name, True, self.current_theme.accent_color)
-        theme_bg = pygame.Rect(WINDOW_WIDTH - theme_text.get_width() - 30, 10,
-                            theme_text.get_width() + 20, theme_text.get_height() + 10)
-        pygame.draw.rect(self.screen, BLACK, theme_bg, border_radius=5)
-        pygame.draw.rect(self.screen, self.current_theme.accent_color, theme_bg, 2, border_radius=5)
-        self.screen.blit(theme_text, (WINDOW_WIDTH - theme_text.get_width() - 20, 15))
+    def draw_paused(self):
+        """ Draws the paused screen """
+        # Draw the game in the background
+        self.draw_game()
+
+        # Dark overlay
+        overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+        overlay.set_alpha(150)
+        overlay.fill(BLACK)
+        self.screen.blit(overlay, (0, 0))
+
+        # Paused text
+        self.draw_text("PAUSED", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 40), color=self.current_theme.accent_color)
+
+        # Instructions
+        self.draw_text("Press P to continue", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 10),
+                    font=self.small_font, color=WHITE)
+
+        self.draw_text("Press ESC to return to menu", (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 40),
+                    font=self.small_font, color=WHITE)
 
     def draw_game_over(self):
         """ Draws the game over-screen """
@@ -826,6 +952,7 @@ class Game:
         self.score = 0
         self.food_collected = 0
         self.goombas = []
+        self.paused = False
 
     def spawn_food(self):
         """ Spawn food based on current theme """
@@ -835,6 +962,9 @@ class Game:
                 self.food = Food(food_type="bow")
             else:
                 self.food = Food(food_type="hellokitty")
+        elif self.current_theme and self.current_theme.name == "Retro Classic":
+            # Only coins for Retro Classic Snake (no mushrooms)
+            self.food = Food(food_type="coin")
         else:
             # Coin/mushroom system for other themes (70% coin=1pt, 30% mushroom=2pt)
             food_type = "coin" if random.random() < 0.7 else "mushroom"
@@ -927,16 +1057,27 @@ class Game:
     def handle_game_input(self, event):
         """ Handles input during the game """
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP or event.key == pygame.K_w:
-                self.snake.change_direction(Direction.UP)
-            elif event.key == pygame.K_DOWN or event.key == pygame.K_s:
-                self.snake.change_direction(Direction.DOWN)
-            elif event.key == pygame.K_LEFT or event.key == pygame.K_a:
-                self.snake.change_direction(Direction.LEFT)
-            elif event.key == pygame.K_RIGHT or event.key == pygame.K_d:
-                self.snake.change_direction(Direction.RIGHT)
+            if event.key == pygame.K_p:
+                # Toggle pause
+                self.paused = not self.paused
             elif event.key == pygame.K_ESCAPE:
-                self.game_state = "menu"
+                if self.paused:
+                    # Return to menu when paused
+                    self.game_state = "menu"
+                    self.paused = False
+                else:
+                    # Allow ESC to pause as well
+                    self.paused = True
+            elif not self.paused:
+                # Only allow movement when not paused
+                if event.key == pygame.K_UP or event.key == pygame.K_w:
+                    self.snake.change_direction(Direction.UP)
+                elif event.key == pygame.K_DOWN or event.key == pygame.K_s:
+                    self.snake.change_direction(Direction.DOWN)
+                elif event.key == pygame.K_LEFT or event.key == pygame.K_a:
+                    self.snake.change_direction(Direction.LEFT)
+                elif event.key == pygame.K_RIGHT or event.key == pygame.K_d:
+                    self.snake.change_direction(Direction.RIGHT)
 
     def handle_game_over_input(self, event):
         """ Handles inputs on the game over-screen"""
@@ -965,7 +1106,7 @@ class Game:
 
     def update(self):
         """ Updating game logic """
-        if self.game_state == "playing":
+        if self.game_state == "playing" and not self.paused:
             self.snake.move()
 
             # Move obstacles
@@ -1042,7 +1183,10 @@ class Game:
             if self.game_state == "menu":
                 self.draw_menu()
             elif self.game_state == "playing":
-                self.draw_game()
+                if self.paused:
+                    self.draw_paused()
+                else:
+                    self.draw_game()
             elif self.game_state == "game_over":
                 self.draw_game_over()
 
