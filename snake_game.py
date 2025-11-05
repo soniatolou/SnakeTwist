@@ -171,10 +171,12 @@ class Food:
             self.points = 1
         elif food_type == "mushroom":
             self.points = 2
-        elif food_type in ["bow", "hellokitty"]:
-            self.points = 10
+        elif food_type == "bow":
+            self.points = 1
+        elif food_type == "hellokitty":
+            self.points = 1
         else:
-            self.points = 10  # Default
+            self.points = 1  # Default
 
         self.position = self.generate_position()
 
