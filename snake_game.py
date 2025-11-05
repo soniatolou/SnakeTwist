@@ -151,13 +151,79 @@ class Food:
     def __init__(self):
         self.position = self.generate_position()
 
-    def generate_position(self, snake_body=None):
+    def generate_position(self, snake_body=None, obstacles=None):
         """ Generates a random position for food """
         while True:
             pos = (random.randint(0, GRID_WIDTH - 1), random.randint(0, GRID_HEIGHT - 1))
-            if snake_body is None or pos not in snake_body:
+            obstacle_positions = [obs.position for obs in obstacles] if obstacles else []
+            if (snake_body is None or pos not in snake_body) and pos not in obstacle_positions:
                 self.position = pos
                 return pos
+
+class Obstacle:
+    """ Obstacle class for moving obstacles in themed worlds """
+    def __init__(self, obstacle_type, color):
+        self.type = obstacle_type  # "palm" or "surfboard"
+        self.color = color
+        self.position = self.generate_position()
+        self.direction = random.choice([Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT])
+        self.move_counter = 0
+        self.move_delay = 3  # Move every 3 frames (slower than snake)
+
+    def generate_position(self):
+        """ Generate random position for obstacle """
+        return (random.randint(0, GRID_WIDTH - 1), random.randint(0, GRID_HEIGHT - 1))
+
+    def move(self):
+        """ Move the obstacle """
+        self.move_counter += 1
+        if self.move_counter >= self.move_delay:
+            self.move_counter = 0
+
+            x, y = self.position
+            dx, dy = self.direction.value
+            new_x = x + dx
+            new_y = y + dy
+
+            # Bounce off walls
+            if new_x < 0 or new_x >= GRID_WIDTH:
+                self.direction = Direction.LEFT if self.direction == Direction.RIGHT else Direction.RIGHT
+                new_x = x
+            if new_y < 0 or new_y >= GRID_HEIGHT:
+                self.direction = Direction.UP if self.direction == Direction.DOWN else Direction.DOWN
+                new_y = y
+
+            self.position = (new_x, new_y)
+
+    def draw(self, screen):
+        """ Draw the obstacle """
+        x, y = self.position
+        rect = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+
+        if self.type == "palm":
+            # Draw palm tree (brown trunk + green top)
+            trunk_color = (139, 69, 19)
+            leaf_color = (34, 139, 34)
+
+            # Trunk
+            trunk_rect = pygame.Rect(x * GRID_SIZE + 7, y * GRID_SIZE + 8, 6, 12)
+            pygame.draw.rect(screen, trunk_color, trunk_rect)
+
+            # Leaves (circle on top)
+            pygame.draw.circle(screen, leaf_color,
+                             (x * GRID_SIZE + 10, y * GRID_SIZE + 6), 8)
+
+        elif self.type == "surfboard":
+            # Draw surfboard (elongated oval)
+            board_color = (255, 69, 0)  # Orange-red
+            stripe_color = (255, 255, 255)
+
+            # Main board
+            pygame.draw.ellipse(screen, board_color, rect)
+            # Stripe
+            stripe_rect = pygame.Rect(x * GRID_SIZE + 2, y * GRID_SIZE + GRID_SIZE//2 - 1,
+                                     GRID_SIZE - 4, 2)
+            pygame.draw.rect(screen, stripe_color, stripe_rect)
 
 class Game:
     """ Main class for the game """
@@ -182,6 +248,9 @@ class Game:
         self.food = Food()
         self.score = 0
         self.game_state = "menu"  # menu, playing, game_over
+        self.obstacles = []
+        self.obstacle_spawn_counter = 0
+        self.obstacle_spawn_rate = 50  # Spawn obstacle every 50 frames (approx 5 seconds)
 
     def draw_text(self, text, pos, font=None, color=WHITE):
         """ Draws text on the screen """
@@ -229,6 +298,10 @@ class Game:
         # Background
         self.screen.fill(self.current_theme.bg_color)
 
+        # Draw obstacles
+        for obstacle in self.obstacles:
+            obstacle.draw(self.screen)
+
         # Draw snake with gradient effect
         for i, (x, y) in enumerate(self.snake.body):
             rect = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE - 2, GRID_SIZE - 2)
@@ -247,10 +320,44 @@ class Game:
                 color = tuple(int(c * factor) for c in self.current_theme.snake_color)
                 pygame.draw.rect(self.screen, color, rect, border_radius=3)
 
-        # Draw food as a circle
+        # Draw food (Stitch in Lilo & Stitch theme, otherwise circle)
         food_x, food_y = self.food.position
         food_rect = pygame.Rect(food_x * GRID_SIZE, food_y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-        pygame.draw.circle(self.screen, self.current_theme.food_color, food_rect.center, GRID_SIZE // 2)
+
+        if self.current_theme.name == "Ohana Island":
+            # Draw Stitch (blue alien with big ears)
+            stitch_blue = (65, 105, 225)
+            dark_blue = (30, 60, 150)
+
+            # Body (main circle)
+            pygame.draw.circle(self.screen, stitch_blue, food_rect.center, GRID_SIZE // 2 - 1)
+
+            # Big black eyes
+            eye_left = (food_x * GRID_SIZE + 5, food_y * GRID_SIZE + 8)
+            eye_right = (food_x * GRID_SIZE + 15, food_y * GRID_SIZE + 8)
+            pygame.draw.circle(self.screen, BLACK, eye_left, 3)
+            pygame.draw.circle(self.screen, BLACK, eye_right, 3)
+
+            # Ears (dark blue triangles on top)
+            ear_left_points = [
+                (food_x * GRID_SIZE + 3, food_y * GRID_SIZE + 2),
+                (food_x * GRID_SIZE, food_y * GRID_SIZE - 3),
+                (food_x * GRID_SIZE + 6, food_y * GRID_SIZE + 2)
+            ]
+            ear_right_points = [
+                (food_x * GRID_SIZE + 14, food_y * GRID_SIZE + 2),
+                (food_x * GRID_SIZE + 20, food_y * GRID_SIZE - 3),
+                (food_x * GRID_SIZE + 17, food_y * GRID_SIZE + 2)
+            ]
+            pygame.draw.polygon(self.screen, dark_blue, ear_left_points)
+            pygame.draw.polygon(self.screen, dark_blue, ear_right_points)
+
+            # Nose (small pink)
+            pygame.draw.circle(self.screen, self.current_theme.food_color,
+                             (food_x * GRID_SIZE + 10, food_y * GRID_SIZE + 12), 2)
+        else:
+            # Regular circle for other themes
+            pygame.draw.circle(self.screen, self.current_theme.food_color, food_rect.center, GRID_SIZE // 2)
 
         # Draw score
         score_text = self.small_font.render(f"Score: {self.score}", True, self.current_theme.accent_color)
@@ -295,8 +402,38 @@ class Game:
     def reset_game(self):
         """ Resets the game """
         self.snake.reset()
-        self.food.generate_position(self.snake.body)
+        self.obstacles = []
+        self.obstacle_spawn_counter = 0
+        self.food.generate_position(self.snake.body, self.obstacles)
         self.score = 0
+
+    def spawn_obstacle(self):
+        """ Spawn a random obstacle for Stitch theme """
+        if self.current_theme and self.current_theme.name == "Ohana Island":
+            obstacle_type = "palm"  # Only palm trees
+            obstacle = Obstacle(obstacle_type, self.current_theme.accent_color)
+
+            # Make sure obstacle doesn't spawn on snake or food
+            attempts = 0
+            while attempts < 10:
+                if (obstacle.position not in self.snake.body and
+                    obstacle.position != self.food.position):
+                    self.obstacles.append(obstacle)
+                    break
+                obstacle.position = obstacle.generate_position()
+                attempts += 1
+
+            # Limit number of obstacles
+            if len(self.obstacles) > 5:
+                self.obstacles.pop(0)
+
+    def check_obstacle_collision(self):
+        """ Check if snake collides with any obstacle """
+        head = self.snake.body[0]
+        for obstacle in self.obstacles:
+            if head == obstacle.position:
+                return True
+        return False
 
     def handle_menu_input(self, event):
         """ Handles input in the menu """
@@ -336,15 +473,31 @@ class Game:
         if self.game_state == "playing":
             self.snake.move()
 
-            # Checks collisions
+            # Move obstacles
+            for obstacle in self.obstacles:
+                obstacle.move()
+
+            # Spawn obstacles for Stitch theme
+            if self.current_theme and self.current_theme.name == "Ohana Island":
+                self.obstacle_spawn_counter += 1
+                if self.obstacle_spawn_counter >= self.obstacle_spawn_rate:
+                    self.spawn_obstacle()
+                    self.obstacle_spawn_counter = 0
+
+            # Checks collisions with walls and self
             if self.snake.check_collision():
+                self.game_state = "game_over"
+                return
+
+            # Check collisions with obstacles
+            if self.check_obstacle_collision():
                 self.game_state = "game_over"
                 return
 
             # Checks if the snake eats food
             if self.snake.eat_food(self.food.position):
                 self.score += 10
-                self.food.generate_position(self.snake.body)
+                self.food.generate_position(self.snake.body, self.obstacles)
 
     def run(self):
         """ Main game loop """
