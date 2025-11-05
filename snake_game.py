@@ -855,28 +855,35 @@ class Game:
 
         elif self.current_theme.name == "Kawaii Paradise":
             if self.food.type == "bow":
-                # Draw pink bow (1 point)
+                # Draw pink bow (1 point) - bigger with black outline
                 pink = (255, 105, 180)
                 dark_pink = (255, 20, 147)
 
-                # Bow center
-                pygame.draw.circle(self.screen, dark_pink, food_rect.center, 3)
-
-                # Bow left side
+                # Bow left side (bigger)
                 left_bow = [
-                    (food_screen_x + 4, food_screen_y + 10),
-                    (food_screen_x + 2, food_screen_y + 6),
+                    (food_screen_x + 2, food_screen_y + 12),
+                    (food_screen_x - 1, food_screen_y + 5),
                     (food_screen_x + 8, food_screen_y + 10)
                 ]
+                # Draw black outline for left bow
+                pygame.draw.polygon(self.screen, BLACK, left_bow, 2)
+                # Fill left bow with pink
                 pygame.draw.polygon(self.screen, pink, left_bow)
 
-                # Bow right side
+                # Bow right side (bigger)
                 right_bow = [
                     (food_screen_x + 12, food_screen_y + 10),
-                    (food_screen_x + 18, food_screen_y + 6),
-                    (food_screen_x + 16, food_screen_y + 10)
+                    (food_screen_x + 21, food_screen_y + 5),
+                    (food_screen_x + 18, food_screen_y + 12)
                 ]
+                # Draw black outline for right bow
+                pygame.draw.polygon(self.screen, BLACK, right_bow, 2)
+                # Fill right bow with pink
                 pygame.draw.polygon(self.screen, pink, right_bow)
+
+                # Bow center (bigger)
+                pygame.draw.circle(self.screen, BLACK, food_rect.center, 4)  # Black outline
+                pygame.draw.circle(self.screen, dark_pink, food_rect.center, 3)  # Pink center
 
             elif self.food.type == "hellokitty":
                 # Draw Hello Kitty (2 points)
