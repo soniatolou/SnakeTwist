@@ -293,17 +293,49 @@ class Obstacle:
         rect = pygame.Rect(screen_x, screen_y, GRID_SIZE, GRID_SIZE)
 
         if self.type == "palm":
-            # Draw palm tree (brown trunk + green top)
+            # Draw palm tree (brown trunk + green fronds)
             trunk_color = (139, 69, 19)
             leaf_color = (34, 139, 34)
+            dark_leaf_color = (0, 128, 0)
 
-            # Trunk
+            # Trunk (curved/segmented for tropical look)
             trunk_rect = pygame.Rect(screen_x + 7, screen_y + 8, 6, 12)
             pygame.draw.rect(screen, trunk_color, trunk_rect)
+            # Trunk segments
+            pygame.draw.line(screen, (101, 50, 15), (screen_x + 7, screen_y + 11), (screen_x + 13, screen_y + 11), 1)
+            pygame.draw.line(screen, (101, 50, 15), (screen_x + 7, screen_y + 15), (screen_x + 13, screen_y + 15), 1)
 
-            # Leaves (circle on top)
-            pygame.draw.circle(screen, leaf_color,
-                             (screen_x + 10, screen_y + 6), 8)
+            # Palm fronds (5-6 leaves radiating from center)
+            center_x = screen_x + 10
+            center_y = screen_y + 6
+
+            # Top frond
+            pygame.draw.line(screen, leaf_color, (center_x, center_y), (center_x, center_y - 6), 3)
+            pygame.draw.line(screen, dark_leaf_color, (center_x, center_y), (center_x, center_y - 6), 1)
+
+            # Top-left frond
+            pygame.draw.line(screen, leaf_color, (center_x, center_y), (center_x - 5, center_y - 4), 3)
+            pygame.draw.line(screen, dark_leaf_color, (center_x, center_y), (center_x - 5, center_y - 4), 1)
+
+            # Top-right frond
+            pygame.draw.line(screen, leaf_color, (center_x, center_y), (center_x + 5, center_y - 4), 3)
+            pygame.draw.line(screen, dark_leaf_color, (center_x, center_y), (center_x + 5, center_y - 4), 1)
+
+            # Left frond
+            pygame.draw.line(screen, leaf_color, (center_x, center_y), (center_x - 7, center_y), 3)
+            pygame.draw.line(screen, dark_leaf_color, (center_x, center_y), (center_x - 7, center_y), 1)
+
+            # Right frond
+            pygame.draw.line(screen, leaf_color, (center_x, center_y), (center_x + 7, center_y), 3)
+            pygame.draw.line(screen, dark_leaf_color, (center_x, center_y), (center_x + 7, center_y), 1)
+
+            # Bottom-left frond
+            pygame.draw.line(screen, leaf_color, (center_x, center_y), (center_x - 5, center_y + 3), 3)
+            pygame.draw.line(screen, dark_leaf_color, (center_x, center_y), (center_x - 5, center_y + 3), 1)
+
+            # Bottom-right frond
+            pygame.draw.line(screen, leaf_color, (center_x, center_y), (center_x + 5, center_y + 3), 3)
+            pygame.draw.line(screen, dark_leaf_color, (center_x, center_y), (center_x + 5, center_y + 3), 1)
 
         elif self.type == "surfboard":
             # Draw surfboard (elongated oval)
