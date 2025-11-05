@@ -1037,8 +1037,10 @@ class Game:
                 obstacle.position = obstacle.generate_position()
                 attempts += 1
 
-            # Limit number of obstacles to 1 for Hello Kitty world
-            if len(self.obstacles) > 1:
+            # Gradually increase max Kuromis based on food collected
+            # Start with 1, then add 1 more every 5 food items collected (max 5 Kuromis)
+            max_kuromis = min(5, 1 + (self.food_collected // 5))
+            if len(self.obstacles) > max_kuromis:
                 self.obstacles.pop(0)
 
         elif self.current_theme and self.current_theme.name == "Hyrule Kingdom":
