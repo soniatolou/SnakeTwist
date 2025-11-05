@@ -148,8 +148,10 @@ class Snake:
 
 class Food:
     """ Food class to handle the position of the food """
-    def __init__(self):
+    def __init__(self, food_type="normal", points=10):
         self.position = self.generate_position()
+        self.type = food_type  # "normal", "bow", "hellokitty"
+        self.points = points
 
     def generate_position(self, snake_body=None, obstacles=None):
         """ Generates a random position for food """
@@ -163,12 +165,13 @@ class Food:
 class Obstacle:
     """ Obstacle class for moving obstacles in themed worlds """
     def __init__(self, obstacle_type, color):
-        self.type = obstacle_type  # "palm" or "surfboard"
+        self.type = obstacle_type  # "palm", "surfboard", or "kuromi"
         self.color = color
         self.position = self.generate_position()
         self.direction = random.choice([Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT])
         self.move_counter = 0
-        self.move_delay = 3  # Move every 3 frames (slower than snake)
+        # Kuromi moves faster than palm trees
+        self.move_delay = 2 if obstacle_type == "kuromi" else 3
 
     def generate_position(self):
         """ Generate random position for obstacle """
@@ -224,6 +227,40 @@ class Obstacle:
             stripe_rect = pygame.Rect(x * GRID_SIZE + 2, y * GRID_SIZE + GRID_SIZE//2 - 1,
                                      GRID_SIZE - 4, 2)
             pygame.draw.rect(screen, stripe_color, stripe_rect)
+
+        elif self.type == "kuromi":
+            # Draw Kuromi (black/purple character with devil tail and pink skull)
+            kuromi_black = (50, 50, 50)
+            kuromi_purple = (138, 43, 226)
+            pink = (255, 105, 180)
+
+            # Body (black circle)
+            pygame.draw.circle(screen, kuromi_black, rect.center, GRID_SIZE // 2 - 1)
+
+            # Eyes (white with black pupils)
+            eye_left = (x * GRID_SIZE + 6, y * GRID_SIZE + 8)
+            eye_right = (x * GRID_SIZE + 14, y * GRID_SIZE + 8)
+            pygame.draw.circle(screen, (255, 255, 255), eye_left, 2)
+            pygame.draw.circle(screen, (255, 255, 255), eye_right, 2)
+            pygame.draw.circle(screen, BLACK, eye_left, 1)
+            pygame.draw.circle(screen, BLACK, eye_right, 1)
+
+            # Devil ears (purple triangles)
+            ear_left_points = [
+                (x * GRID_SIZE + 3, y * GRID_SIZE + 2),
+                (x * GRID_SIZE, y * GRID_SIZE - 3),
+                (x * GRID_SIZE + 6, y * GRID_SIZE + 2)
+            ]
+            ear_right_points = [
+                (x * GRID_SIZE + 14, y * GRID_SIZE + 2),
+                (x * GRID_SIZE + 20, y * GRID_SIZE - 3),
+                (x * GRID_SIZE + 17, y * GRID_SIZE + 2)
+            ]
+            pygame.draw.polygon(screen, kuromi_purple, ear_left_points)
+            pygame.draw.polygon(screen, kuromi_purple, ear_right_points)
+
+            # Pink skull mark on forehead
+            pygame.draw.circle(screen, pink, (x * GRID_SIZE + 10, y * GRID_SIZE + 4), 2)
 
 class Game:
     """ Main class for the game """
@@ -320,7 +357,7 @@ class Game:
                 color = tuple(int(c * factor) for c in self.current_theme.snake_color)
                 pygame.draw.rect(self.screen, color, rect, border_radius=3)
 
-        # Draw food (Stitch in Lilo & Stitch theme, otherwise circle)
+        # Draw food (Stitch in Lilo & Stitch theme, Hello Kitty/Bow in Hello Kitty theme, otherwise circle)
         food_x, food_y = self.food.position
         food_rect = pygame.Rect(food_x * GRID_SIZE, food_y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
 
@@ -355,6 +392,69 @@ class Game:
             # Nose (small pink)
             pygame.draw.circle(self.screen, self.current_theme.food_color,
                              (food_x * GRID_SIZE + 10, food_y * GRID_SIZE + 12), 2)
+
+        elif self.current_theme.name == "Kawaii Paradise":
+            if self.food.type == "bow":
+                # Draw pink bow (1 point)
+                pink = (255, 105, 180)
+                dark_pink = (255, 20, 147)
+
+                # Bow center
+                pygame.draw.circle(self.screen, dark_pink, food_rect.center, 3)
+
+                # Bow left side
+                left_bow = [
+                    (food_x * GRID_SIZE + 4, food_y * GRID_SIZE + 10),
+                    (food_x * GRID_SIZE + 2, food_y * GRID_SIZE + 6),
+                    (food_x * GRID_SIZE + 8, food_y * GRID_SIZE + 10)
+                ]
+                pygame.draw.polygon(self.screen, pink, left_bow)
+
+                # Bow right side
+                right_bow = [
+                    (food_x * GRID_SIZE + 12, food_y * GRID_SIZE + 10),
+                    (food_x * GRID_SIZE + 18, food_y * GRID_SIZE + 6),
+                    (food_x * GRID_SIZE + 16, food_y * GRID_SIZE + 10)
+                ]
+                pygame.draw.polygon(self.screen, pink, right_bow)
+
+            elif self.food.type == "hellokitty":
+                # Draw Hello Kitty (2 points)
+                white = (255, 255, 255)
+                pink = (255, 105, 180)
+                yellow = (255, 215, 0)
+
+                # Head (white circle)
+                pygame.draw.circle(self.screen, white, food_rect.center, GRID_SIZE // 2 - 1)
+
+                # Black eyes
+                eye_left = (food_x * GRID_SIZE + 6, food_y * GRID_SIZE + 9)
+                eye_right = (food_x * GRID_SIZE + 14, food_y * GRID_SIZE + 9)
+                pygame.draw.circle(self.screen, BLACK, eye_left, 2)
+                pygame.draw.circle(self.screen, BLACK, eye_right, 2)
+
+                # Yellow nose
+                pygame.draw.circle(self.screen, yellow,
+                                 (food_x * GRID_SIZE + 10, food_y * GRID_SIZE + 12), 2)
+
+                # Ears (white triangles on top)
+                ear_left_points = [
+                    (food_x * GRID_SIZE + 3, food_y * GRID_SIZE + 4),
+                    (food_x * GRID_SIZE + 1, food_y * GRID_SIZE),
+                    (food_x * GRID_SIZE + 6, food_y * GRID_SIZE + 4)
+                ]
+                ear_right_points = [
+                    (food_x * GRID_SIZE + 14, food_y * GRID_SIZE + 4),
+                    (food_x * GRID_SIZE + 19, food_y * GRID_SIZE),
+                    (food_x * GRID_SIZE + 17, food_y * GRID_SIZE + 4)
+                ]
+                pygame.draw.polygon(self.screen, white, ear_left_points)
+                pygame.draw.polygon(self.screen, white, ear_right_points)
+
+                # Pink bow on left ear
+                bow_center = (food_x * GRID_SIZE + 3, food_y * GRID_SIZE + 2)
+                pygame.draw.circle(self.screen, pink, bow_center, 3)
+
         else:
             # Regular circle for other themes
             pygame.draw.circle(self.screen, self.current_theme.food_color, food_rect.center, GRID_SIZE // 2)
@@ -404,11 +504,25 @@ class Game:
         self.snake.reset()
         self.obstacles = []
         self.obstacle_spawn_counter = 0
-        self.food.generate_position(self.snake.body, self.obstacles)
+        self.spawn_food()
         self.score = 0
 
+    def spawn_food(self):
+        """ Spawn food based on current theme """
+        if self.current_theme and self.current_theme.name == "Kawaii Paradise":
+            # 70% chance for bow (1 point), 30% chance for Hello Kitty (2 points)
+            if random.random() < 0.7:
+                self.food = Food(food_type="bow", points=1)
+            else:
+                self.food = Food(food_type="hellokitty", points=2)
+        else:
+            # Normal food for other themes
+            self.food = Food(food_type="normal", points=10)
+
+        self.food.generate_position(self.snake.body, self.obstacles)
+
     def spawn_obstacle(self):
-        """ Spawn a random obstacle for Stitch theme """
+        """ Spawn a random obstacle for themed worlds """
         if self.current_theme and self.current_theme.name == "Ohana Island":
             obstacle_type = "palm"  # Only palm trees
             obstacle = Obstacle(obstacle_type, self.current_theme.accent_color)
@@ -425,6 +539,24 @@ class Game:
 
             # Limit number of obstacles
             if len(self.obstacles) > 5:
+                self.obstacles.pop(0)
+
+        elif self.current_theme and self.current_theme.name == "Kawaii Paradise":
+            obstacle_type = "kuromi"  # Only Kuromi
+            obstacle = Obstacle(obstacle_type, self.current_theme.accent_color)
+
+            # Make sure obstacle doesn't spawn on snake or food
+            attempts = 0
+            while attempts < 10:
+                if (obstacle.position not in self.snake.body and
+                    obstacle.position != self.food.position):
+                    self.obstacles.append(obstacle)
+                    break
+                obstacle.position = obstacle.generate_position()
+                attempts += 1
+
+            # Limit number of obstacles to 1 for Hello Kitty world
+            if len(self.obstacles) > 1:
                 self.obstacles.pop(0)
 
     def check_obstacle_collision(self):
@@ -477,10 +609,16 @@ class Game:
             for obstacle in self.obstacles:
                 obstacle.move()
 
-            # Spawn obstacles for Stitch theme
-            if self.current_theme and self.current_theme.name == "Ohana Island":
+            # Spawn obstacles for themed worlds
+            if self.current_theme and (self.current_theme.name == "Ohana Island" or
+                                       self.current_theme.name == "Kawaii Paradise"):
                 self.obstacle_spawn_counter += 1
-                if self.obstacle_spawn_counter >= self.obstacle_spawn_rate:
+                # Spawn rate depends on theme
+                spawn_rate = self.obstacle_spawn_rate
+                if self.current_theme.name == "Kawaii Paradise" and len(self.obstacles) == 0:
+                    # Spawn Kuromi immediately if none exists
+                    self.spawn_obstacle()
+                elif self.obstacle_spawn_counter >= spawn_rate:
                     self.spawn_obstacle()
                     self.obstacle_spawn_counter = 0
 
@@ -496,8 +634,8 @@ class Game:
 
             # Checks if the snake eats food
             if self.snake.eat_food(self.food.position):
-                self.score += 10
-                self.food.generate_position(self.snake.body, self.obstacles)
+                self.score += self.food.points
+                self.spawn_food()
 
     def run(self):
         """ Main game loop """
