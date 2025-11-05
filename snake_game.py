@@ -160,18 +160,39 @@ class HelloKittyTheme(Theme):
         self.background_image = None
 
     def load_background(self, window_width, window_height):
-        """ Load and scale the background image - small corners with white background """
+        """ Load and scale the background image """
         try:
             import os
+            from PIL import Image
             # Get path relative to this script
             script_dir = os.path.dirname(os.path.abspath(__file__))
-            bg_path = os.path.join(script_dir, "images", "hellokitty.png")
+            bg_path = os.path.join(script_dir, "images", "hellokitty_bc.jpg")
             if os.path.exists(bg_path):
-                # Load image and scale to small size (100x100) for corners
-                self.background_image = pygame.image.load(bg_path).convert()
-                self.background_image = pygame.transform.scale(self.background_image, (100, 100))
+                # Load image using PIL first, then convert to pygame surface
+                pil_image = Image.open(bg_path).convert('RGB')
+                # Resize using PIL
+                pil_image = pil_image.resize((window_width, window_height), Image.LANCZOS)
+                # Convert PIL image to pygame surface
+                mode = pil_image.mode
+                size = pil_image.size
+                data = pil_image.tobytes()
+                self.background_image = pygame.image.fromstring(data, size, mode)
+            else:
+                print(f"Background image not found at: {bg_path}")
+        except ImportError:
+            print("PIL/Pillow not installed. Trying direct pygame load...")
+            try:
+                import os
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                bg_path = os.path.join(script_dir, "images", "hellokitty_bc.jpg")
+                if os.path.exists(bg_path):
+                    self.background_image = pygame.image.load(bg_path).convert()
+                    self.background_image = pygame.transform.scale(self.background_image, (window_width, window_height))
+            except Exception as e:
+                print(f"Could not load background image with pygame: {e}")
+                self.background_image = None
         except Exception as e:
-            print(f"Could not load background image: {e}")
+            print(f"Could not load Hello Kitty background image: {e}")
             self.background_image = None
 
 class RetroTheme(Theme):
@@ -904,14 +925,14 @@ class Game:
                 self.draw_hyrule_grass(gx, gy)
 
         elif self.current_theme.name == "Kawaii Paradise":
-            # Fill game area with theme color
-            pygame.draw.rect(self.screen, self.current_theme.bg_color, game_area_rect)
-            # Draw Hello Kitty image in corners (below header) if loaded
-            if self.current_theme.background_image:
-                self.screen.blit(self.current_theme.background_image, (15, HEADER_HEIGHT + 15))
-                self.screen.blit(self.current_theme.background_image, (WINDOW_WIDTH - 115, HEADER_HEIGHT + 15))
-                self.screen.blit(self.current_theme.background_image, (15, WINDOW_HEIGHT - 115))
-                self.screen.blit(self.current_theme.background_image, (WINDOW_WIDTH - 115, WINDOW_HEIGHT - 115))
+            # Check if background image is loaded
+            if hasattr(self.current_theme, 'background_image') and self.current_theme.background_image is not None:
+                # Draw Hello Kitty background image - blit the portion below the header
+                source_rect = pygame.Rect(0, HEADER_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT - HEADER_HEIGHT)
+                self.screen.blit(self.current_theme.background_image, (0, HEADER_HEIGHT), source_rect)
+            else:
+                # Fill game area with theme color if no image
+                pygame.draw.rect(self.screen, self.current_theme.bg_color, game_area_rect)
 
         else:
             # Default: fill game area with theme color (for Retro and any other themes)
