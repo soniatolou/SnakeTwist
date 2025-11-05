@@ -147,20 +147,88 @@ class Snake:
         return False
 
 class Food:
-    """ Food class to handle the position of the food """
-    def __init__(self, food_type="normal", points=10):
+    """Base class for food (coins, mushrooms, and special items)"""
+    def __init__(self, food_type="coin"):
+        self.food_type = food_type  # "coin", "mushroom", "bow", "hellokitty"
+        self.type = food_type  # Alias for compatibility
+
+        # Set points based on food type
+        if food_type == "coin":
+            self.points = 1
+        elif food_type == "mushroom":
+            self.points = 2
+        elif food_type in ["bow", "hellokitty"]:
+            self.points = 10
+        else:
+            self.points = 10  # Default
+
         self.position = self.generate_position()
-        self.type = food_type  # "normal", "bow", "hellokitty"
-        self.points = points
 
     def generate_position(self, snake_body=None, obstacles=None):
-        """ Generates a random position for food """
+        """Generate a random position for food"""
         while True:
             pos = (random.randint(0, GRID_WIDTH - 1), random.randint(0, GRID_HEIGHT - 1))
             obstacle_positions = [obs.position for obs in obstacles] if obstacles else []
             if (snake_body is None or pos not in snake_body) and pos not in obstacle_positions:
                 self.position = pos
                 return pos
+
+class Goomba:
+    """Goomba class for Mario theme obstacles"""
+    def __init__(self, position=None, can_move=False):
+        if position is None:
+            self.position = self.generate_position()
+        else:
+            self.position = position
+        self.animation_frame = 0
+        self.animation_speed = 10
+        self.animation_counter = 0
+        self.can_move = can_move
+        self.move_counter = 0
+        self.move_speed = 15  # How many frames between each movement
+        self.direction = random.choice([Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT])
+
+    def generate_position(self, snake_body=None, food_pos=None, other_goombas=None):
+        """Generate a random position for Goomba"""
+        while True:
+            pos = (random.randint(0, GRID_WIDTH - 1), random.randint(0, GRID_HEIGHT - 1))
+            if snake_body is None or pos not in snake_body:
+                if food_pos is None or pos != food_pos:
+                    if other_goombas is None or pos not in other_goombas:
+                        self.position = pos
+                        return pos
+
+    def update_animation(self):
+        """Update animation for Goomba"""
+        self.animation_counter += 1
+        if self.animation_counter >= self.animation_speed:
+            self.animation_counter = 0
+            self.animation_frame = (self.animation_frame + 1) % 2
+
+    def move(self, snake_body, food_pos, other_goombas):
+        """Move Goomba if it can move"""
+        if not self.can_move:
+            return
+
+        self.move_counter += 1
+        if self.move_counter >= self.move_speed:
+            self.move_counter = 0
+
+            # Try to move in current direction
+            x, y = self.position
+            dx, dy = self.direction.value
+            new_pos = (x + dx, y + dy)
+
+            # Check if new position is valid
+            if (0 <= new_pos[0] < GRID_WIDTH and
+                0 <= new_pos[1] < GRID_HEIGHT and
+                new_pos not in snake_body and
+                new_pos != food_pos and
+                new_pos not in other_goombas):
+                self.position = new_pos
+            else:
+                # Change direction if we collide
+                self.direction = random.choice([Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT])
 
 class Obstacle:
     """ Obstacle class for moving obstacles in themed worlds """
@@ -284,10 +352,13 @@ class Game:
         self.snake = Snake()
         self.food = Food()
         self.score = 0
+        self.food_collected = 0
+        self.goombas = []
         self.game_state = "menu"  # menu, playing, game_over
         self.obstacles = []
         self.obstacle_spawn_counter = 0
         self.obstacle_spawn_rate = 50  # Spawn obstacle every 50 frames (approx 5 seconds)
+
 
     def draw_text(self, text, pos, font=None, color=WHITE):
         """ Draws text on the screen """
@@ -330,14 +401,97 @@ class Game:
         instr_rect = instr.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT - 30))
         self.screen.blit(instr, instr_rect)
 
+    def draw_coin(self, position, color):
+        """Rita ett mynt"""
+        x, y = position
+        center_x = x * GRID_SIZE + GRID_SIZE // 2
+        center_y = y * GRID_SIZE + GRID_SIZE // 2
+
+        # Guldmynt med cirkel
+        pygame.draw.circle(self.screen, color, (center_x, center_y), GRID_SIZE // 2 - 2)
+        # Inre cirkel (detalj)
+        darker_color = tuple(max(0, c - 40) for c in color)
+        pygame.draw.circle(self.screen, darker_color, (center_x, center_y), GRID_SIZE // 3, 2)
+
+    def draw_mushroom(self, position, color):
+        """Rita en svamp (mushroom)"""
+        x, y = position
+        base_x = x * GRID_SIZE
+        base_y = y * GRID_SIZE
+
+        # Svamphatt (röd med vita prickar för Mario-tema)
+        mushroom_red = (255, 0, 0) if self.current_theme.name == "Super Mario World" else color
+        mushroom_white = (255, 255, 255)
+        mushroom_beige = (245, 222, 179)
+
+        # Hatt (övre delen)
+        hat_rect = pygame.Rect(base_x + 2, base_y + 2, GRID_SIZE - 4, GRID_SIZE // 2)
+        pygame.draw.ellipse(self.screen, mushroom_red, hat_rect)
+
+        # Vita prickar på hatten
+        pygame.draw.circle(self.screen, mushroom_white, (base_x + GRID_SIZE // 2, base_y + 6), 2)
+        pygame.draw.circle(self.screen, mushroom_white, (base_x + 5, base_y + 8), 1)
+        pygame.draw.circle(self.screen, mushroom_white, (base_x + GRID_SIZE - 5, base_y + 8), 1)
+
+        # Stam (nedre delen)
+        stem_rect = pygame.Rect(base_x + GRID_SIZE // 3, base_y + GRID_SIZE // 2, GRID_SIZE // 3, GRID_SIZE // 2 - 2)
+        pygame.draw.rect(self.screen, mushroom_beige, stem_rect, border_radius=2)
+
+    def draw_goomba(self, goomba):
+        """Rita en Goomba"""
+        x, y = goomba.position
+        base_x = x * GRID_SIZE
+        base_y = y * GRID_SIZE
+
+        # Goomba kropp (brun svamp-form)
+        goomba_brown = (139, 69, 19)
+        goomba_dark = (101, 50, 15)
+
+        # Kropp
+        body_rect = pygame.Rect(base_x + 2, base_y + 8, GRID_SIZE - 4, GRID_SIZE - 10)
+        pygame.draw.ellipse(self.screen, goomba_brown, body_rect)
+
+        # Fötter (animerade)
+        foot_offset = 2 if goomba.animation_frame == 0 else -2
+        pygame.draw.rect(self.screen, goomba_dark,
+                        (base_x + 3 + foot_offset, base_y + GRID_SIZE - 4, 5, 3))
+        pygame.draw.rect(self.screen, goomba_dark,
+                        (base_x + GRID_SIZE - 8 - foot_offset, base_y + GRID_SIZE - 4, 5, 3))
+
+        # Ögon (arga)
+        eye_white = WHITE
+        eye_black = BLACK
+        # Vänster öga
+        pygame.draw.circle(self.screen, eye_white, (base_x + 6, base_y + 10), 3)
+        pygame.draw.circle(self.screen, eye_black, (base_x + 7, base_y + 10), 2)
+        # Höger öga
+        pygame.draw.circle(self.screen, eye_white, (base_x + GRID_SIZE - 6, base_y + 10), 3)
+        pygame.draw.circle(self.screen, eye_black, (base_x + GRID_SIZE - 7, base_y + 10), 2)
+
+        # Ögonbryn (arga)
+        pygame.draw.line(self.screen, goomba_dark,
+                        (base_x + 4, base_y + 8), (base_x + 8, base_y + 9), 2)
+        pygame.draw.line(self.screen, goomba_dark,
+                        (base_x + GRID_SIZE - 4, base_y + 8), (base_x + GRID_SIZE - 8, base_y + 9), 2)
+
     def draw_game(self):
         """ Draws the game """
         # Background
         self.screen.fill(self.current_theme.bg_color)
 
-        # Draw obstacles
+        # Draw obstacles (Stitch theme)
         for obstacle in self.obstacles:
             obstacle.draw(self.screen)
+
+        # Draw Goombas (Mario theme)
+        if self.current_theme and self.current_theme.name == "Super Mario World":
+            for goomba in self.goombas:
+                self.draw_goomba(goomba)
+                goomba.update_animation()
+
+                # Move Goomba
+                other_goomba_positions = [g.position for g in self.goombas if g != goomba]
+                goomba.move(self.snake.body, self.food.position, other_goomba_positions)
 
         # Draw snake with gradient effect
         for i, (x, y) in enumerate(self.snake.body):
@@ -357,7 +511,7 @@ class Game:
                 color = tuple(int(c * factor) for c in self.current_theme.snake_color)
                 pygame.draw.rect(self.screen, color, rect, border_radius=3)
 
-        # Draw food (Stitch in Lilo & Stitch theme, Hello Kitty/Bow in Hello Kitty theme, otherwise circle)
+        # Draw food (theme-specific rendering)
         food_x, food_y = self.food.position
         food_rect = pygame.Rect(food_x * GRID_SIZE, food_y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
 
@@ -456,8 +610,11 @@ class Game:
                 pygame.draw.circle(self.screen, pink, bow_center, 3)
 
         else:
-            # Regular circle for other themes
-            pygame.draw.circle(self.screen, self.current_theme.food_color, food_rect.center, GRID_SIZE // 2)
+            # Draw coin or mushroom for other themes
+            if self.food.food_type == "coin":
+                self.draw_coin(self.food.position, self.current_theme.food_color)
+            else:  # mushroom
+                self.draw_mushroom(self.food.position, self.current_theme.food_color)
 
         # Draw score
         score_text = self.small_font.render(f"Score: {self.score}", True, self.current_theme.accent_color)
@@ -506,18 +663,21 @@ class Game:
         self.obstacle_spawn_counter = 0
         self.spawn_food()
         self.score = 0
+        self.food_collected = 0
+        self.goombas = []
 
     def spawn_food(self):
         """ Spawn food based on current theme """
         if self.current_theme and self.current_theme.name == "Kawaii Paradise":
-            # 70% chance for bow (1 point), 30% chance for Hello Kitty (2 points)
+            # 70% chance for bow (10 points), 30% chance for Hello Kitty (10 points)
             if random.random() < 0.7:
-                self.food = Food(food_type="bow", points=1)
+                self.food = Food(food_type="bow")
             else:
-                self.food = Food(food_type="hellokitty", points=2)
+                self.food = Food(food_type="hellokitty")
         else:
-            # Normal food for other themes
-            self.food = Food(food_type="normal", points=10)
+            # Coin/mushroom system for other themes (70% coin=1pt, 30% mushroom=2pt)
+            food_type = "coin" if random.random() < 0.7 else "mushroom"
+            self.food = Food(food_type=food_type)
 
         self.food.generate_position(self.snake.body, self.obstacles)
 
@@ -600,6 +760,22 @@ class Game:
             elif event.key == pygame.K_ESCAPE:
                 self.game_state = "menu"
 
+    def spawn_goomba(self):
+        """Skapa en ny Goomba på en säker plats"""
+        goomba_positions = [g.position for g in self.goombas]
+
+        # Goombas börjar röra sig efter 15 block (5 + 3 + 3 + 3 + 3 = 17, så efter 4:e Goomban)
+        can_move = self.food_collected >= 15
+
+        new_goomba = Goomba(can_move=can_move)
+        new_goomba.generate_position(self.snake.body, self.food.position, goomba_positions)
+        self.goombas.append(new_goomba)
+
+        # Aktivera rörelse för alla Goombas när tröskeln nås
+        if can_move:
+            for goomba in self.goombas:
+                goomba.can_move = True
+
     def update(self):
         """ Updating game logic """
         if self.game_state == "playing":
@@ -627,14 +803,31 @@ class Game:
                 self.game_state = "game_over"
                 return
 
-            # Check collisions with obstacles
+            # Check collisions with obstacles (Stitch theme)
             if self.check_obstacle_collision():
                 self.game_state = "game_over"
                 return
 
-            # Checks if the snake eats food
+            # Check Goomba collisions (Mario theme)
+            if self.current_theme and self.current_theme.name == "Super Mario World":
+                for goomba in self.goombas:
+                    if self.snake.body[0] == goomba.position:
+                        self.game_state = "game_over"
+                        return
+
+            # Check if the snake eats food
             if self.snake.eat_food(self.food.position):
+                # Add points based on food type
                 self.score += self.food.points
+                self.food_collected += 1
+
+                # Spawn Goomba (Mario theme only)
+                # First at 5 blocks, then every 3rd (at 8, 11, 14, 17, etc.)
+                if self.current_theme and self.current_theme.name == "Super Mario World":
+                    if self.food_collected == 5 or (self.food_collected > 5 and (self.food_collected - 5) % 3 == 0):
+                        self.spawn_goomba()
+
+                # Spawn new food
                 self.spawn_food()
 
     def run(self):
